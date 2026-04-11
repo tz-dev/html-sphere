@@ -1,6 +1,6 @@
 # html-sphere
 
-Interactive rotating sphere in HTML, CSS, and JavaScript.
+Interactive rotating sphere in HTML, CSS, and JavaScript - check the [live demo right here](https://tz-dev.github.io/html-sphere/).
 
 ![Screenshot](img/screenshot.png)
 
@@ -66,4 +66,4 @@ The sphere rotation, background stars, compass, glow, and UI are all handled in 
 
 ## License
 
-GNU PUBLIC LICENSE
+GNU General Public License v3.0
