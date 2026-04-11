@@ -1,0 +1,275 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-1: #020712;
+  --bg-2: #06111d;
+  --bg-3: #0b2231;
+  --panel: rgba(6, 18, 30, 0.74);
+  --panel-border: rgba(135, 227, 255, 0.16);
+  --text: #d9f4ff;
+  --muted: #97c7d8;
+  --hint: #79a9bb;
+  --value: #9be3ff;
+  --accent: #65d8ff;
+  --button-2: rgba(120, 166, 188, 0.18);
+  --shadow: rgba(0, 0, 0, 0.45);
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(88, 216, 255, 0.08), transparent 22%),
+    radial-gradient(circle at 80% 22%, rgba(86, 162, 255, 0.08), transparent 24%),
+    linear-gradient(180deg, var(--bg-3), var(--bg-2) 45%, var(--bg-1));
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--text);
+}
+
+body {
+  position: relative;
+}
+
+.app,
+.stage {
+  width: 100%;
+  height: 100%;
+}
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(88, 216, 255, 0.08), transparent 22%),
+    radial-gradient(circle at 80% 22%, rgba(86, 162, 255, 0.08), transparent 24%),
+    radial-gradient(circle at 50% 45%, rgba(70, 190, 255, 0.05), transparent 28%),
+    radial-gradient(circle at 50% 50%, rgba(150, 220, 255, 0.03), transparent 50%),
+    linear-gradient(180deg, var(--bg-3), var(--bg-2) 45%, var(--bg-1));
+}
+
+.stage.ui-hidden,
+.stage.ui-hidden * {
+  cursor: none !important;
+}
+
+#sphereCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+
+#sphereCanvas.dragging-sphere,
+#sphereCanvas.dragging-view {
+  cursor: grabbing;
+}
+
+.overlay {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: min(585px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 18px 18px 16px;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow:
+    0 16px 48px var(--shadow),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.overlay:not(.visible) {
+  opacity: 0;
+  transform: translateX(20px);
+  pointer-events: none;
+}
+
+.overlay h1 {
+  margin: 0 0 12px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.desc {
+  margin: 0 0 18px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.control {
+  margin-bottom: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 0.92rem;
+}
+
+.value {
+  color: var(--value);
+  font-variant-numeric: tabular-nums;
+  min-width: 72px;
+  text-align: right;
+}
+
+input[type="range"],
+input[type="number"] {
+  width: 100%;
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+input[type="number"] {
+  border: 1px solid rgba(135, 227, 255, 0.14);
+  background: rgba(5, 16, 27, 0.72);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.checkbox-row {
+  margin-top: 4px;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text);
+}
+
+.checkbox input {
+  cursor: pointer;
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: 1px solid rgba(123, 226, 255, 0.18);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: linear-gradient(180deg, rgba(33, 145, 189, 0.9), rgba(20, 96, 126, 0.92));
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button.secondary {
+  background: var(--button-2);
+  color: var(--text);
+  font-size: 0.75em !important;
+}
+
+.hint {
+  margin-top: 14px;
+  color: var(--hint);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.fps {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(5, 18, 28, 0.68);
+  border: 1px solid rgba(135, 227, 255, 0.14);
+  color: var(--value);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(10px);
+  transition: opacity 0.2s ease;
+}
+
+.fps.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.compass {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: 132px;
+  height: 132px;
+  border-radius: 18px;
+  background: rgba(5, 18, 28, 0.52);
+  border: 1px solid rgba(135, 227, 255, 0.14);
+  backdrop-filter: blur(10px);
+  transition: opacity 0.2s ease;
+}
+
+.compass.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#compassCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@media (max-width: 720px) {
+  .overlay {
+    top: 12px;
+    right: 12px;
+    width: min(540px, calc(100vw - 24px));
+    max-height: calc(100vh - 24px);
+  }
+
+  .fps {
+    top: 12px;
+    left: 12px;
+  }
+
+  .compass {
+    right: 12px;
+    bottom: 12px;
+    width: 116px;
+    height: 116px;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

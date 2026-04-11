@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Sphere</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <div class="stage" id="stage">
+        <canvas id="sphereCanvas" aria-label="Interactive rotating sphere"></canvas>
+
+        <aside class="overlay visible" id="overlay">
+          <h1>Interactive Sphere</h1>
+          <p class="desc">
+            Left-drag the sphere to spin it. Right-drag the background to rotate the view.
+            Use the wheel or zoom slider to zoom. Double-click the sphere to reset its orientation.
+          </p>
+
+          <div class="control">
+            <div class="row">
+              <label for="speed">Speed</label>
+              <div class="value" id="speedVal">120 °/s</div>
+            </div>
+            <input id="speed" type="range" min="0" max="720" value="120" step="1" />
+          </div>
+
+          <div class="control">
+            <div class="row">
+              <label for="zoom">Zoom</label>
+              <div class="value" id="zoomVal">1.00×</div>
+            </div>
+            <input id="zoom" type="range" min="1" max="240" value="100" step="1" />
+          </div>
+
+          <div class="control">
+            <div class="row">
+              <label for="starDensity">Star Density</label>
+              <div class="value" id="starDensityVal">1.00×</div>
+            </div>
+            <input id="starDensity" type="range" min="25" max="300" value="100" step="1" />
+          </div>
+
+          <div class="control">
+            <div class="row">
+              <label for="axisX">Axis X</label>
+              <div class="value" id="axisXVal">0.30</div>
+            </div>
+            <input id="axisX" type="range" min="-100" max="100" value="30" step="1" />
+          </div>
+
+          <div class="control">
+            <div class="row">
+              <label for="axisY">Axis Y</label>
+              <div class="value" id="axisYVal">1.00</div>
+            </div>
+            <input id="axisY" type="range" min="-100" max="100" value="100" step="1" />
+          </div>
+
+          <div class="control">
+            <div class="row">
+              <label for="axisZ">Axis Z</label>
+              <div class="value" id="axisZVal">0.10</div>
+            </div>
+            <input id="axisZ" type="range" min="-100" max="100" value="10" step="1" />
+          </div>
+
+          <div class="grid-2">
+            <div class="control">
+              <div class="row">
+                <label for="latCount">Horiz. lines</label>
+                <div class="value" id="latCountVal">4</div>
+              </div>
+              <input id="latCount" type="number" min="0" max="16" value="4" step="1" />
+            </div>
+
+            <div class="control">
+              <div class="row">
+                <label for="lonCount">Vert. lines</label>
+                <div class="value" id="lonCountVal">4</div>
+              </div>
+              <input id="lonCount" type="number" min="0" max="16" value="4" step="1" />
+            </div>
+          </div>
+
+          <div class="control checkbox-row">
+            <label class="checkbox">
+              <input type="checkbox" id="showFps" />
+              <span>Show FPS</span>
+            </label>
+            <label class="checkbox" style="margin-left: 75px !important;">
+              <input type="checkbox" id="showCompass" checked />
+              <span>Show compass</span>
+            </label>
+          </div>
+
+          <div class="control checkbox-row">
+            <label class="checkbox">
+              <input type="checkbox" id="showGlow" checked />
+              <span>Show glow</span>
+            </label>
+          </div>
+
+          <div class="control checkbox-row">
+            <label class="checkbox">
+              <input type="checkbox" id="counterRotateStars" />
+              <span>Counter-rotate stars</span>
+            </label>
+          </div>
+          
+          <div class="buttons">
+            <button id="pauseBtn" class="secondary">Pause</button>
+            <button id="resetSphereBtn" class="secondary">Reset Sphere</button>
+            <button id="resetBtn" class="secondary">Reset View</button>
+            <button id="fullscreenBtn" class="secondary">Fullscreen</button>
+          </div>
+
+          <div class="hint">
+            Axis sliders define weighted spin contributions. Speed controls the overall rotation rate.
+          </div>
+        </aside>
+
+        <div class="fps hidden" id="fpsBox">FPS: <span id="fpsVal">0</span></div>
+        <div class="compass" id="compassBox">
+          <canvas id="compassCanvas" aria-label="Compass widget"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/script.js" defer></script>
+  </body>
+</html>
