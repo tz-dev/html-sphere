@@ -723,36 +723,42 @@ function tickWarp(dt) {
 
   warpSphereAlpha = Math.max(0, 1 - easeInOutCubic(Math.max(0, warpProgress * 2 - 0.35)));
 
-  if (warpProgress >= 1) {
-    sphereHue         = warpTargetHue;
-    hueInput.value    = String(warpTargetHue);
-    axisXInput.value  = String(warpTargetAxisX);
-    axisYInput.value  = String(warpTargetAxisY);
-    axisZInput.value  = String(warpTargetAxisZ);
-    sphereRotation    = identityMatrix();
-    viewRotation      = identityMatrix();
-    sphereAngularVelocity = getPresetAngularVelocity();
-    zoom              = warpTargetZoom;
-    syncInputFromZoom();
-    warpSphereAlpha   = 1;
-    warpSphereOffsetX = 0;
-    warpSphereOffsetY = 0;
-    warpDriftDirX = 0;
-    warpDriftDirY = 0;
+if (warpProgress >= 1) {
+  sphereHue      = warpTargetHue;
+  hueInput.value = String(warpTargetHue);
+  axisXInput.value = String(warpTargetAxisX);
+  axisYInput.value = String(warpTargetAxisY);
+  axisZInput.value = String(warpTargetAxisZ);
 
-    if (warpStarIdx >= 0 && warpStarIdx < stars.length) {
-      stars.splice(warpStarIdx, 1);
-    }
+  sphereRotation = identityMatrix();
+  sphereAngularVelocity = getPresetAngularVelocity();
 
-    warpActive        = false;
-    warpStarIdx       = -1;
-    updateLabels();
+  zoom = warpTargetZoom;
+  syncInputFromZoom();
 
-    warpOverlay.style.setProperty("--wx", "50%");
-    warpOverlay.style.setProperty("--wy", "50%");
-    warpOverlay.classList.add("flash");
-    setTimeout(() => warpOverlay.classList.remove("flash"), 400);
+  warpSphereAlpha   = 1;
+  warpSphereOffsetX = 0;
+  warpSphereOffsetY = 0;
+  warpDriftDirX = 0;
+  warpDriftDirY = 0;
+
+  if (counterRotateStars) {
+    starfieldRotation = multiplyMatrices(viewRotation, viewRotation);
   }
+
+  if (warpStarIdx >= 0 && warpStarIdx < stars.length) {
+    stars.splice(warpStarIdx, 1);
+  }
+
+  warpActive  = false;
+  warpStarIdx = -1;
+  updateLabels();
+
+  warpOverlay.style.setProperty("--wx", "50%");
+  warpOverlay.style.setProperty("--wy", "50%");
+  warpOverlay.classList.add("flash");
+  setTimeout(() => warpOverlay.classList.remove("flash"), 400);
+}
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
