@@ -11,11 +11,14 @@
       <div class="stage" id="stage">
         <canvas id="sphereCanvas" aria-label="Interactive rotating sphere"></canvas>
 
+        <div id="warpOverlay"></div>
+        <div id="starLabel"></div>
+
         <aside class="overlay visible" id="overlay">
           <h1>Interactive Sphere</h1>
           <p class="desc">
-            Left-drag the sphere to spin it. Right-drag the background to rotate the view.
-            Use the wheel or zoom slider to zoom. Double-click the sphere to reset its orientation.
+            Left-drag sphere to spin · Right-drag background to rotate view ·
+            Middle-click a star to warp to it · Wheel to zoom · Double-click to reset
           </p>
 
           <div class="control">
@@ -40,6 +43,14 @@
               <div class="value" id="starDensityVal">1.00×</div>
             </div>
             <input id="starDensity" type="range" min="25" max="300" value="100" step="1" />
+          </div>
+
+          <div class="control">
+            <div class="row">
+              <label for="hue">Color Hue <span class="hue-preview" id="huePreview"></span></label>
+              <div class="value" id="hueVal">210°</div>
+            </div>
+            <input id="hue" type="range" min="0" max="360" value="210" step="1" />
           </div>
 
           <div class="control">
@@ -70,20 +81,16 @@
             <div class="control">
               <div class="row">
                 <label for="latCount">Horiz. lines</label>
-                <div class="value" id="latCountVal">4</div>
+                <input id="latCount" type="number" min="0" max="16" value="4" step="1" />
               </div>
-              <input id="latCount" type="number" min="0" max="16" value="4" step="1" />
             </div>
-
             <div class="control">
               <div class="row">
                 <label for="lonCount">Vert. lines</label>
-                <div class="value" id="lonCountVal">4</div>
+                <input id="lonCount" type="number" min="0" max="16" value="4" step="1" />
               </div>
-              <input id="lonCount" type="number" min="0" max="16" value="4" step="1" />
             </div>
           </div>
-
           <div class="control checkbox-row">
             <label class="checkbox">
               <input type="checkbox" id="showFps" />
@@ -98,14 +105,18 @@
           <div class="control checkbox-row">
             <label class="checkbox">
               <input type="checkbox" id="showGlow" checked />
-              <span>Show glow</span>
+              <span>Sphere glow</span>
             </label>
-            <label class="checkbox">
-              <input type="checkbox" id="counterRotateStars" style="margin-left: 70px !important;" />
-              <span>Counter-rotate stars</span>
+            <label class="checkbox" style="margin-left: 55px !important;">
+              <input type="checkbox" id="showStarGlow" checked />
+              <span>Star glow</span>
+            </label>
+            <label class="checkbox" style="margin-left: 55px !important;">
+              <input type="checkbox" id="counterRotateStars" />
+              <span>Counter-rotate</span>
             </label>
           </div>
-          
+
           <div class="buttons">
             <button id="pauseBtn" class="secondary">Pause</button>
             <button id="resetSphereBtn" class="secondary">Reset Sphere</button>
@@ -113,9 +124,6 @@
             <button id="fullscreenBtn" class="secondary">Fullscreen</button>
           </div>
 
-          <div class="hint">
-            Axis sliders define weighted spin contributions. Speed controls the overall rotation rate.
-          </div>
         </aside>
 
         <div class="fps hidden" id="fpsBox">FPS: <span id="fpsVal">0</span></div>
