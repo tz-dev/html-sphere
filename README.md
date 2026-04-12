@@ -2,7 +2,9 @@
 
 Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live demo right here](https://tz-dev.github.io/html-sphere/).
 
-![Screenshot](img/screenshot.png)
+![Screenshot](img/screenshot00.png)
+
+![Screenshot](img/screenshot01.png)
 
 ## Features
 

@@ -167,7 +167,7 @@ body {
   position: absolute;
   top: 20px;
   right: 20px;
-  width: min(800px, calc(100vw - 40px));
+  width: min(675px, calc(100vw - 40px));
   max-height: calc(100vh - 40px);
   overflow: auto;
   padding: 18px 18px 16px;
@@ -197,6 +197,56 @@ body {
   font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+}
+
+.menu-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 20;
+
+  border: 1px solid rgba(123, 226, 255, 0.18);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: rgba(6, 18, 30, 0.78);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(12px);
+
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+.menu-toggle.hidden {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+
+.menu-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.menu-close:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .desc {
@@ -445,5 +495,15 @@ button.active {
   .grid-2 {
     grid-template-columns: 1fr;
     gap: 0;
+  }
+
+  .menu-toggle {
+    top: 12px;
+    right: 12px;
+  }
+
+  .menu-close {
+    top: 10px;
+    right: 10px;
   }
 }

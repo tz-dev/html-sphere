@@ -69,6 +69,9 @@ const ringEnabledInput = document.getElementById("ringEnabled");
 const ringInnerRadiusInput = document.getElementById("ringInnerRadius");
 const ringOuterRadiusInput = document.getElementById("ringOuterRadius");
 
+const openMenuBtn = document.getElementById("openMenuBtn");
+const closeMenuBtn = document.getElementById("closeMenuBtn");
+
 // ─── Cached layout dimensions (updated on resize) ────────────────────────────
 let cachedCanvasWidth = 0;
 let cachedCanvasHeight = 0;
@@ -1277,14 +1280,17 @@ function tickWarp(dt) {
 
 function setUiVisible(v) {
   overlay.classList.toggle("visible", v);
-  stage.classList.toggle("ui-hidden", !v);
-  customCursor?.classList.toggle("hidden", !v);
+  openMenuBtn?.classList.toggle("hidden", v);
 }
 
 function updateOverlayVisibility() {
-  setUiVisible(true);
   clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(() => { if (dragMode === "none") setUiVisible(false); }, overlayTimeoutMs);
+
+  if (overlay.classList.contains("visible")) {
+    inactivityTimer = setTimeout(() => {
+      if (dragMode === "none") setUiVisible(false);
+    }, overlayTimeoutMs);
+  }
 }
 
 function updateCustomCursor() {
@@ -1691,6 +1697,16 @@ window.addEventListener("keydown", (event) => {
       render();
     }, 100);
   }
+});
+
+openMenuBtn.addEventListener("click", () => {
+  setUiVisible(true);
+  updateOverlayVisibility();
+});
+
+closeMenuBtn.addEventListener("click", () => {
+  setUiVisible(false);
+  clearTimeout(inactivityTimer);
 });
 
 ringEnabledInput.addEventListener("change", () => {
