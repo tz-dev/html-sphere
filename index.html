@@ -70,6 +70,18 @@
           </div>
 
           <div class="control control-inline">
+            <label for="stageHue">BG Hue</label>
+            <input id="stageHue" type="range" min="0" max="360" value="210" step="1" />
+            <div class="value" id="stageHueVal">210°</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="stageIntensity">BG Intensity</label>
+            <input id="stageIntensity" type="range" min="0" max="200" value="100" step="1" />
+            <div class="value" id="stageIntensityVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
             <label for="sceneBrightness">Brightness</label>
             <input id="sceneBrightness" type="range" min="40" max="180" value="100" step="1" />
             <div class="value" id="sceneBrightnessVal">1.00×</div>
@@ -111,8 +123,6 @@
             </div>
           </div>
 
-          <hr>
-
           <div class="control checkbox-row">
             <label class="checkbox">
               <input type="checkbox" id="showGlow" checked />
@@ -139,8 +149,6 @@
               <span>Show compass</span>
             </label>
           </div>
-
-          <hr>
 
           <div class="control checkbox-row">
             <label class="checkbox">

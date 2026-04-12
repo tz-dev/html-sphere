@@ -15,6 +15,8 @@
   --accent: #65d8ff;
   --button-2: rgba(120, 166, 188, 0.18);
   --shadow: rgba(0, 0, 0, 0.45);
+
+  --stage-intensity: 1;
 }
 
 html,
@@ -25,6 +27,7 @@ body {
   overflow: hidden;
   background: linear-gradient(180deg, var(--bg-3), var(--bg-2) 45%, var(--bg-1));
   font-family: Inter, system-ui, sans-serif;
+  font-size: 0.9em;
   color: var(--text);
 }
 
@@ -44,12 +47,12 @@ body {
 
   --stage-r1-x: 20%;
   --stage-r1-y: 10%;
-  --stage-r1-r: rgba(88, 216, 255, 0.08);
+  --stage-r1-r: rgba(88, 216, 255, calc(0.08 * var(--stage-intensity)));
   --stage-r1-stop: 22%;
 
   --stage-r2-x: 80%;
   --stage-r2-y: 22%;
-  --stage-r2-r: rgba(86, 162, 255, 0.08);
+  --stage-r2-r: rgba(86, 162, 255, calc(0.08 * var(--stage-intensity)));
   --stage-r2-stop: 24%;
 
   --stage-lin-angle: 180deg;
@@ -217,7 +220,7 @@ body {
 
 .control-inline label {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
 }
 
 .control-inline .value {

@@ -60,6 +60,11 @@ const sceneContrastVal = document.getElementById("sceneContrastVal");
 const autoWarpInput = document.getElementById("autoWarp");
 const autoWarpIntervalInput = document.getElementById("autoWarpInterval");
 
+const stageHueInput = document.getElementById("stageHue");
+const stageHueVal = document.getElementById("stageHueVal");
+const stageIntensityInput = document.getElementById("stageIntensity");
+const stageIntensityVal = document.getElementById("stageIntensityVal");
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 let showGlow = true;
@@ -132,6 +137,9 @@ let warpDriftDirY = 0;
 let warpStartViewRotation = identityMatrix();
 let warpTargetViewRotation = identityMatrix();
 let warpCounterRotateWasActive = false;
+
+let stageHue = 210;
+let stageIntensity = 1;
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 
@@ -253,8 +261,8 @@ function hslaString(h, s, l, a) {
 }
 
 function randomStageBackground() {
-  // Basis bleibt thematisch "space / cyan-blue / violet", aber mit genug Varianz
-  const hueBase = rand(185, 255);
+  const intensity = stageIntensity;
+  const hueBase = stageHue + rand(-28, 28);
   const hueOffset = rand(-28, 28);
 
   const r1x = rand(8, 38);
@@ -265,40 +273,46 @@ function randomStageBackground() {
   const r2y = rand(10, 38);
   const r2stop = rand(18, 38);
 
+  const radialAlphaMin = 0.03 + intensity * 0.02;
+  const radialAlphaMax = 0.08 + intensity * 0.08;
+
   const r1Color = hslaString(
     hueBase + rand(-16, 16),
     rand(72, 96),
     rand(60, 76),
-    rand(0.05, 0.16)
+    clamp(rand(radialAlphaMin, radialAlphaMax), 0, 1)
   );
 
   const r2Color = hslaString(
     hueBase + hueOffset,
     rand(68, 94),
     rand(56, 74),
-    rand(0.05, 0.16)
+    clamp(rand(radialAlphaMin, radialAlphaMax), 0, 1)
   );
 
   const linAngle = `${randInt(145, 225)}deg`;
 
+  const lightBoost = intensity * 6;
+  const satBoost = intensity * 6;
+
   const lin1 = hslaString(
     hueBase + rand(-18, 12),
-    rand(48, 72),
-    rand(8, 18),
+    clamp(rand(48, 72) + satBoost, 0, 100),
+    clamp(rand(8, 18) + lightBoost * 0.35, 0, 100),
     1
   );
 
   const lin2 = hslaString(
     hueBase + rand(-10, 20),
-    rand(40, 68),
-    rand(10, 24),
+    clamp(rand(40, 68) + satBoost, 0, 100),
+    clamp(rand(10, 24) + lightBoost * 0.45, 0, 100),
     1
   );
 
   const lin3 = hslaString(
     hueBase + rand(-22, 18),
-    rand(38, 62),
-    rand(3, 10),
+    clamp(rand(38, 62) + satBoost * 0.8, 0, 100),
+    clamp(rand(3, 10) + lightBoost * 0.2, 0, 100),
     1
   );
 
@@ -319,6 +333,17 @@ function randomStageBackground() {
   stage.style.setProperty("--stage-lin-c2", lin2);
   stage.style.setProperty("--stage-lin-c2-stop", lin2Stop);
   stage.style.setProperty("--stage-lin-c3", lin3);
+
+  updateStageIntensity();
+}
+
+function getStageIntensity() {
+  return clamp(Number(stageIntensityInput.value) / 100, 0, 2);
+}
+
+function updateStageIntensity() {
+  stageIntensity = getStageIntensity();
+  stage.style.setProperty("--stage-intensity", stageIntensity.toFixed(2));
 }
 
 // ─── Quaternion helpers (for slerp) ───────────────────────────────────────────
@@ -542,6 +567,8 @@ function setControlsDisabled(disabled) {
     axisXInput,
     axisYInput,
     axisZInput,
+    stageHueInput,
+    stageIntensityInput,
     starDensityInput,
     sphereGlowAmountInput,
     starGlowAmountInput,
@@ -606,23 +633,30 @@ function updateLabels() {
   sphereGlowAmount = clamp(Number(sphereGlowAmountInput.value) / 100, 0, 3);
   starGlowAmount = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
 
+  stageHue = Number(stageHueInput.value);
+  stageIntensity = getStageIntensity();
+
   starDensityVal.textContent = `${density.toFixed(2)}×`;
   sphereGlowAmountVal.textContent = `${sphereGlowAmount.toFixed(2)}×`;
   starGlowAmountVal.textContent = `${starGlowAmount.toFixed(2)}×`;
+  stageHueVal.textContent = `${stageHue}°`;
+  stageIntensityVal.textContent = `${stageIntensity.toFixed(2)}×`;
+
   sceneBrightness = clamp(Number(sceneBrightnessInput.value) / 100, 0.4, 1.8);
   sceneContrast = clamp(Number(sceneContrastInput.value) / 100, 0.4, 1.8);
 
   sceneBrightnessVal.textContent = `${sceneBrightness.toFixed(2)}×`;
   sceneContrastVal.textContent = `${sceneContrast.toFixed(2)}×`;
   updateSceneFilter();
-  speedVal.textContent       = `${speedInput.value} °/s`;
-  zoomVal.textContent        = `${zoom.toFixed(2)}×`;
-  axisXVal.textContent       = x.toFixed(2);
-  axisYVal.textContent       = y.toFixed(2);
-  axisZVal.textContent       = z.toFixed(2);
+
+  speedVal.textContent = `${speedInput.value} °/s`;
+  zoomVal.textContent = `${zoom.toFixed(2)}×`;
+  axisXVal.textContent = x.toFixed(2);
+  axisYVal.textContent = y.toFixed(2);
+  axisZVal.textContent = z.toFixed(2);
   if (latCountVal) latCountVal.textContent = String(getLatCount());
   if (lonCountVal) lonCountVal.textContent = String(getLonCount());
-  hueVal.textContent         = `${sphereHue}°`;
+  hueVal.textContent = `${sphereHue}°`;
   updateHuePreview();
 }
 
@@ -1049,6 +1083,12 @@ function resetView() {
   lonCountInput.value = 4;
   hueInput.value    = 210;
   sphereHue         = 210;
+
+  stageHueInput.value = 210;
+  stageIntensityInput.value = 100;
+  stageHue = 210;
+  stageIntensity = 1;
+
   sceneBrightnessInput.value = 100;
   sceneContrastInput.value = 100;
   speedInput.value = 120;
@@ -1070,8 +1110,11 @@ function resetView() {
   warpStartViewRotation = identityMatrix();
   warpTargetViewRotation = identityMatrix();
   warpCounterRotateWasActive = false;
+
   updateLabels();
   updateSceneFilter();
+  updateStageIntensity();
+  randomStageBackground();
   render();
 }
 
@@ -1355,6 +1398,21 @@ document.addEventListener("fullscreenchange", () => {
   render();
 });
 
+stageHueInput.addEventListener("input", () => {
+  updateLabels();
+  randomStageBackground();
+  updateOverlayVisibility();
+  render();
+});
+
+stageIntensityInput.addEventListener("input", () => {
+  updateLabels();
+  updateStageIntensity();
+  randomStageBackground();
+  updateOverlayVisibility();
+  render();
+});
+
 window.addEventListener("resize",       () => { resizeCanvas(); render(); });
 window.addEventListener("pointermove", (e) => {
   pointerClientX = e.clientX;
@@ -1396,10 +1454,13 @@ starGlowAmount = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
 sceneBrightness = clamp(Number(sceneBrightnessInput.value) / 100, 0.4, 1.8);
 sceneContrast = clamp(Number(sceneContrastInput.value) / 100, 0.4, 1.8);
 autoWarp = autoWarpInput.checked;
+stageHue = Number(stageHueInput.value);
+stageIntensity = getStageIntensity();
 syncZoomFromInput();
 updateLabels();
 updateSceneFilter();
 resizeCanvas();
+updateStageIntensity();
 randomStageBackground();
 setCompassVisible(showCompassInput.checked);
 resetView();
