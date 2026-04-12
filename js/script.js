@@ -8,6 +8,7 @@ const stage = document.getElementById("stage");
 const overlay = document.getElementById("overlay");
 const warpOverlay = document.getElementById("warpOverlay");
 const starLabel = document.getElementById("starLabel");
+const customCursor = document.getElementById("customCursor");
 
 const speedInput = document.getElementById("speed");
 const zoomInput = document.getElementById("zoom");
@@ -80,6 +81,10 @@ let dragMode = "none";
 let dragPointerId = null;
 let lastPointerX = 0;
 let lastPointerY = 0;
+
+let pointerClientX = window.innerWidth * 0.5;
+let pointerClientY = window.innerHeight * 0.5;
+let cursorAngle = 0;
 
 let sphereAngularVelocity = [0, 0, 0];
 const inertiaDamping = 2.4;
@@ -601,12 +606,6 @@ function drawSeamCircle(normal, offset, sphereRadius, cx, cy, c) {
 
 function drawBackground(width, height) {
   const cx = width * 0.5, cy = height * 0.5, minD = Math.min(width, height);
-  const g = ctx.createRadialGradient(cx, cy, minD * 0.08, cx, cy, minD * 0.7);
-  g.addColorStop(0,    "rgba(110, 225, 255, 0.045)");
-  g.addColorStop(0.45, "rgba(55,  170, 220, 0.02)");
-  g.addColorStop(1,    "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, width, height);
 
   const useCounterRotate = counterRotateStars && !warpActive;
 
@@ -936,12 +935,20 @@ if (warpProgress >= 1) {
 function setUiVisible(v) {
   overlay.classList.toggle("visible", v);
   stage.classList.toggle("ui-hidden", !v);
+  customCursor?.classList.toggle("hidden", !v);
 }
 
 function updateOverlayVisibility() {
   setUiVisible(true);
   clearTimeout(inactivityTimer);
   inactivityTimer = setTimeout(() => { if (dragMode === "none") setUiVisible(false); }, overlayTimeoutMs);
+}
+
+function updateCustomCursor() {
+  if (!customCursor) return;
+
+  customCursor.style.transform =
+    `translate3d(${pointerClientX}px, ${pointerClientY}px, 0) translate(-50%, -50%) rotate(${cursorAngle}deg)`;
 }
 
 function setFpsVisible(v)     { fpsBox.classList.toggle("hidden", !v); }
@@ -1039,6 +1046,11 @@ function onPointerDown(e) {
 
 function onPointerMove(e) {
   updateOverlayVisibility();
+
+  pointerClientX = e.clientX;
+  pointerClientY = e.clientY;
+  cursorAngle += 2.2;
+  updateCustomCursor();
 
   // Star hover
   if (dragMode === "none" && !warpActive) {
@@ -1164,7 +1176,8 @@ function animate(timestamp) {
     sphereAngularVelocity = addVectors(target, scaleVector(subtractVectors(sphereAngularVelocity, target), damping));
     sphereRotation = applyAngularVelocity(sphereRotation, sphereAngularVelocity, dt);
   }
-
+  cursorAngle += 1;
+  updateCustomCursor();
   render();
   requestAnimationFrame(animate);
 }
@@ -1265,7 +1278,13 @@ document.addEventListener("fullscreenchange", () => {
 });
 
 window.addEventListener("resize",       () => { resizeCanvas(); render(); });
-window.addEventListener("pointermove",  updateOverlayVisibility, { passive: true });
+window.addEventListener("pointermove", (e) => {
+  pointerClientX = e.clientX;
+  pointerClientY = e.clientY;
+  cursorAngle += 1.4;
+  updateCustomCursor();
+  updateOverlayVisibility();
+}, { passive: true });
 window.addEventListener("keydown", (event) => {
   updateOverlayVisibility();
 
@@ -1310,4 +1329,5 @@ updateOverlayVisibility();
 setFpsVisible(showFpsInput.checked);
 updateFullscreenButtonState();
 setControlsDisabled(autoWarp);
+updateCustomCursor();
 requestAnimationFrame(animate);
