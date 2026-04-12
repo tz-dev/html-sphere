@@ -70,9 +70,10 @@ Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live dem
 * **Star Density**: control the number of background stars
 * **Sphere Glow**: control sphere glow intensity
 * **Star Glow**: control star glow intensity
-* **Brightness**: control overall scene brightness
-* **Contrast**: control overall scene contrast
+* **Brightness**: control sphere brightness
+* **Contrast**: control sphere contrast
 * **Color Hue**: control the sphere color palette
+* **Background Hue & Intensity**: control scene background
 * **Axis X / Y / Z**: control weighted spin contribution per axis
 * **Horiz. lines**: set the number of horizontal sphere lines
 * **Vert. lines**: set the number of vertical sphere lines
