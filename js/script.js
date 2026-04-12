@@ -1279,18 +1279,30 @@ function tickWarp(dt) {
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 
 function setUiVisible(v) {
-  overlay.classList.toggle("visible", v);
-  openMenuBtn?.classList.toggle("hidden", v);
+  stage.classList.toggle("ui-hidden", !v);
+}
+
+function openMenu() {
+  overlay.classList.add("visible");
+  openMenuBtn?.classList.add("hidden");
+  setUiVisible(true);
+}
+
+function closeMenu() {
+  overlay.classList.remove("visible");
+  openMenuBtn?.classList.remove("hidden");
+  setUiVisible(true);
 }
 
 function updateOverlayVisibility() {
+  setUiVisible(true);
   clearTimeout(inactivityTimer);
 
-  if (overlay.classList.contains("visible")) {
-    inactivityTimer = setTimeout(() => {
-      if (dragMode === "none") setUiVisible(false);
-    }, overlayTimeoutMs);
-  }
+  inactivityTimer = setTimeout(() => {
+    if (dragMode === "none") {
+      setUiVisible(false);
+    }
+  }, overlayTimeoutMs);
 }
 
 function updateCustomCursor() {
@@ -1700,13 +1712,13 @@ window.addEventListener("keydown", (event) => {
 });
 
 openMenuBtn.addEventListener("click", () => {
-  setUiVisible(true);
+  openMenu();
   updateOverlayVisibility();
 });
 
 closeMenuBtn.addEventListener("click", () => {
-  setUiVisible(false);
-  clearTimeout(inactivityTimer);
+  closeMenu();
+  updateOverlayVisibility();
 });
 
 ringEnabledInput.addEventListener("change", () => {
@@ -1760,7 +1772,7 @@ updateStageIntensity();
 randomStageBackground();
 setCompassVisible(showCompassInput.checked);
 resetView();
-setUiVisible(true);
+openMenu();
 updateOverlayVisibility();
 setFpsVisible(showFpsInput.checked);
 updateFullscreenButtonState();
