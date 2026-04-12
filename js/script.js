@@ -328,8 +328,8 @@ function getCurrentStarViewRotation() {
 
 function buildStars() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
-  const df = clamp(Number(starDensityInput.value) / 100, 0.25, 3);
-  const count = clamp(Math.floor((w * h / 4500) * df), 80, 3200);
+  const df = clamp(Number(starDensityInput.value) / 100, 0.25, 8);
+  const count = clamp(Math.floor((w * h / 4500) * df), 80, 12000);
   stars = [];
   for (let i = 0; i < count; i++) {
     stars.push({
@@ -522,7 +522,7 @@ function updateSceneFilter() {
 
 function updateLabels() {
   const [x, y, z] = getAxisWeights();
-  const density = clamp(Number(starDensityInput.value) / 100, 0.25, 3);
+  const density = clamp(Number(starDensityInput.value) / 100, 0.25, 8);
   sphereGlowAmount = clamp(Number(sphereGlowAmountInput.value) / 100, 0, 3);
   starGlowAmount = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
 
@@ -824,7 +824,9 @@ function startWarp(starIdx, flashX, flashY) {
   warpTargetBrightness = getRandomInRange(0.75, 1.5);
   warpTargetContrast = getRandomInRange(0.75, 1.5);
   warpTargetSpeed = Math.round(getRandomInRange(15, 150));
-  warpSphereAlpha  = 1;
+  warpTargetSphereGlow = autoWarp
+  ? getRandomInRange(0.2, 3.0)
+  : sphereGlowAmount;
   warpSphereAlpha  = 1;
   starLabel.style.opacity = "0";
 
@@ -873,52 +875,55 @@ function tickWarp(dt) {
 
   warpSphereAlpha = Math.max(0, 1 - easeInOutCubic(Math.max(0, warpProgress * 2 - 0.35)));
 
-if (warpProgress >= 1) {
-  sphereHue      = warpTargetHue;
-  hueInput.value = String(warpTargetHue);
-  axisXInput.value = String(warpTargetAxisX);
-  axisYInput.value = String(warpTargetAxisY);
-  axisZInput.value = String(warpTargetAxisZ);
+  if (warpProgress >= 1) {
+    sphereHue      = warpTargetHue;
+    hueInput.value = String(warpTargetHue);
+    axisXInput.value = String(warpTargetAxisX);
+    axisYInput.value = String(warpTargetAxisY);
+    axisZInput.value = String(warpTargetAxisZ);
 
-  sceneBrightnessInput.value = String(Math.round(warpTargetBrightness * 100));
-  sceneContrastInput.value = String(Math.round(warpTargetContrast * 100));
-  speedInput.value = String(warpTargetSpeed);
+    sceneBrightnessInput.value = String(Math.round(warpTargetBrightness * 100));
+    sceneContrastInput.value = String(Math.round(warpTargetContrast * 100));
+    speedInput.value = String(warpTargetSpeed);
 
-  sphereRotation = identityMatrix();
-  sphereAngularVelocity = getPresetAngularVelocity();
+    sphereGlowAmountInput.value = String(Math.round(warpTargetSphereGlow * 100));
+    sphereGlowAmount = warpTargetSphereGlow;
 
-  zoom = warpTargetZoom;
-  syncInputFromZoom();
+    sphereRotation = identityMatrix();
+    sphereAngularVelocity = getPresetAngularVelocity();
 
-  warpSphereAlpha   = 1;
-  warpSphereOffsetX = 0;
-  warpSphereOffsetY = 0;
-  warpDriftDirX = 0;
-  warpDriftDirY = 0;
+    zoom = warpTargetZoom;
+    syncInputFromZoom();
 
-  if (warpCounterRotateWasActive) {
-    starfieldRotation = multiplyMatrices(viewRotation, viewRotation);
-  } else {
-    starViewRotation = viewRotation;
+    warpSphereAlpha   = 1;
+    warpSphereOffsetX = 0;
+    warpSphereOffsetY = 0;
+    warpDriftDirX = 0;
+    warpDriftDirY = 0;
+
+    if (warpCounterRotateWasActive) {
+      starfieldRotation = multiplyMatrices(viewRotation, viewRotation);
+    } else {
+      starViewRotation = viewRotation;
+    }
+
+    if (warpStarIdx >= 0 && warpStarIdx < stars.length) {
+      stars.splice(warpStarIdx, 1);
+    }
+
+    counterRotateStars = warpCounterRotateWasActive;
+    counterRotateStarsInput.checked = counterRotateStars;
+    warpCounterRotateWasActive = false;
+
+    warpActive  = false;
+    warpStarIdx = -1;
+    updateLabels();
+
+    warpOverlay.style.setProperty("--wx", "50%");
+    warpOverlay.style.setProperty("--wy", "50%");
+    warpOverlay.classList.add("flash");
+    setTimeout(() => warpOverlay.classList.remove("flash"), 400);
   }
-
-  if (warpStarIdx >= 0 && warpStarIdx < stars.length) {
-    stars.splice(warpStarIdx, 1);
-  }
-
-  counterRotateStars = warpCounterRotateWasActive;
-  counterRotateStarsInput.checked = counterRotateStars;
-  warpCounterRotateWasActive = false;
-
-  warpActive  = false;
-  warpStarIdx = -1;
-  updateLabels();
-
-  warpOverlay.style.setProperty("--wx", "50%");
-  warpOverlay.style.setProperty("--wy", "50%");
-  warpOverlay.classList.add("flash");
-  setTimeout(() => warpOverlay.classList.remove("flash"), 400);
-}
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
