@@ -123,10 +123,12 @@ let starViewRotation = identityMatrix();
 let sceneBrightness = 1;
 let sceneContrast = 1;
 
+// Warp state
+
 let autoWarp = false;
 let autoWarpTimer = 0;
+const autoWarpZoomDriftSpeed = 0.06;
 
-// Warp state
 let warpActive = false;
 let warpProgress = 0;
 const warpDuration = 1.6;
@@ -615,6 +617,23 @@ function getRandomVisibleStar() {
   }
 
   return null;
+}
+
+function tickAutoWarpZoomDrift(dt) {
+  if (!autoWarp || warpActive || dragMode !== "none") return;
+
+  const targetZoom = 1;
+  const delta = autoWarpZoomDriftSpeed * dt;
+
+  if (zoom < targetZoom) {
+    zoom = Math.min(targetZoom, zoom + delta);
+    syncInputFromZoom();
+    updateLabels();
+  } else if (zoom > targetZoom) {
+    zoom = Math.max(targetZoom, zoom - delta);
+    syncInputFromZoom();
+    updateLabels();
+  }
 }
 
 function setControlsDisabled(disabled) {
@@ -1547,6 +1566,8 @@ function animate(timestamp) {
       triggerAutoWarp();
     }
   }
+
+  tickAutoWarpZoomDrift(dt);
 
   if (counterRotateStars && !paused && !warpActive) {
     const starOmega = scaleVector(sphereAngularVelocity, -starCounterRotateStrength);
