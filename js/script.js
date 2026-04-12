@@ -51,6 +51,14 @@ const hueInput = document.getElementById("hue");
 const hueVal = document.getElementById("hueVal");
 const huePreview = document.getElementById("huePreview");
 
+const sceneBrightnessInput = document.getElementById("sceneBrightness");
+const sceneBrightnessVal = document.getElementById("sceneBrightnessVal");
+const sceneContrastInput = document.getElementById("sceneContrast");
+const sceneContrastVal = document.getElementById("sceneContrastVal");
+
+const autoWarpInput = document.getElementById("autoWarp");
+const autoWarpIntervalInput = document.getElementById("autoWarpInterval");
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 let showGlow = true;
@@ -89,6 +97,12 @@ let starfieldRotation = identityMatrix();
 let sphereHue = 210;
 let starViewRotation = identityMatrix();
 
+let sceneBrightness = 1;
+let sceneContrast = 1;
+
+let autoWarp = false;
+let autoWarpTimer = 0;
+
 // Warp state
 let warpActive = false;
 let warpProgress = 0;
@@ -100,6 +114,9 @@ let warpTargetHue = 210;
 let warpTargetAxisX = 30;
 let warpTargetAxisY = 100;
 let warpTargetAxisZ = 10;
+let warpTargetBrightness = 1;
+let warpTargetContrast = 1;
+let warpTargetSpeed = 120;
 let warpSphereAlpha = 1;
 let hoveredStarIdx = -1;
 let warpSphereOffsetX = 0;
@@ -385,6 +402,95 @@ function getPresetAngularVelocity() {
   return [x * s, y * s, z * s];
 }
 
+function getAutoWarpIntervalSeconds() {
+  return clamp(Number(autoWarpIntervalInput.value) || 12, 2, 120);
+}
+
+function getRandomInRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function randomizeAround(value, percent, min, max) {
+  const factor = getRandomInRange(1 - percent, 1 + percent);
+  return clamp(value * factor, min, max);
+}
+
+function getRandomStarIndex() {
+  if (!stars.length) return -1;
+  return Math.floor(Math.random() * stars.length);
+}
+
+function getRandomVisibleStar() {
+  if (!stars.length) return null;
+
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+
+  const attempts = Math.min(stars.length, 80);
+
+  for (let i = 0; i < attempts; i++) {
+    const idx = Math.floor(Math.random() * stars.length);
+    const pos = starScreenPos(stars[idx], width, height);
+
+    if (pos) {
+      return { idx, pos };
+    }
+  }
+
+  // Fallback: ersten sichtbaren Stern linear suchen
+  for (let i = 0; i < stars.length; i++) {
+    const pos = starScreenPos(stars[i], width, height);
+    if (pos) {
+      return { idx: i, pos };
+    }
+  }
+
+  return null;
+}
+
+function setControlsDisabled(disabled) {
+  const controls = [
+    speedInput,
+    zoomInput,
+    axisXInput,
+    axisYInput,
+    axisZInput,
+    latCountInput,
+    lonCountInput,
+    starDensityInput,
+    sphereGlowAmountInput,
+    starGlowAmountInput,
+    hueInput,
+    sceneBrightnessInput,
+    sceneContrastInput,
+    showFpsInput,
+    showCompassInput,
+    showGlowInput,
+    showStarGlowInput,
+    counterRotateStarsInput,
+    pauseBtn,
+    resetSphereBtn,
+    resetBtn,
+    fullscreenBtn
+  ];
+
+  controls.forEach((el) => {
+    if (el) el.disabled = disabled;
+  });
+
+  autoWarpInput.disabled = false;
+  autoWarpIntervalInput.disabled = false;
+}
+
+function triggerAutoWarp() {
+  if (!autoWarp || warpActive || dragMode !== "none") return;
+
+  const target = getRandomVisibleStar();
+  if (!target) return;
+
+  startWarp(target.idx, target.pos.x, target.pos.y);
+}
+
 function getLatCount() { return clamp(Number(latCountInput.value) || 0, 0, 16); }
 function getLonCount() { return clamp(Number(lonCountInput.value) || 0, 0, 16); }
 function syncZoomFromInput() { zoom = clamp(Number(zoomInput.value) / 100, minZoom, maxZoom); }
@@ -414,6 +520,10 @@ function updateHuePreview() {
   huePreview.style.boxShadow  = `0 0 6px 1px hsl(${sphereHue}, 80%, 60%)`;
 }
 
+function updateSceneFilter() {
+  canvas.style.filter = `brightness(${sceneBrightness}) contrast(${sceneContrast})`;
+}
+
 function updateLabels() {
   const [x, y, z] = getAxisWeights();
   const density = clamp(Number(starDensityInput.value) / 100, 0.25, 3);
@@ -423,6 +533,12 @@ function updateLabels() {
   starDensityVal.textContent = `${density.toFixed(2)}×`;
   sphereGlowAmountVal.textContent = `${sphereGlowAmount.toFixed(2)}×`;
   starGlowAmountVal.textContent = `${starGlowAmount.toFixed(2)}×`;
+  sceneBrightness = clamp(Number(sceneBrightnessInput.value) / 100, 0.4, 1.8);
+  sceneContrast = clamp(Number(sceneContrastInput.value) / 100, 0.4, 1.8);
+
+  sceneBrightnessVal.textContent = `${sceneBrightness.toFixed(2)}×`;
+  sceneContrastVal.textContent = `${sceneContrast.toFixed(2)}×`;
+  updateSceneFilter();
   speedVal.textContent       = `${speedInput.value} °/s`;
   zoomVal.textContent        = `${zoom.toFixed(2)}×`;
   axisXVal.textContent       = x.toFixed(2);
@@ -574,14 +690,13 @@ function drawSphere(alpha) {
 
   ctx.globalAlpha = alpha;
 
-  if (showGlow && sphereGlowAmount > 0) {
-    const glowRadiusFactor = 1 + sphereGlowAmount * 0.35;
-    const gr = Math.max(radius * 1.9 * glowRadiusFactor, Math.min(width, height) * (0.24 + sphereGlowAmount * 0.10));
+  if (showGlow && sphereGlowAmount > 0.02) {
+    const glowRadiusFactor = 1 + sphereGlowAmount * 0.18;
+    const gr = radius * (1.45 + sphereGlowAmount * 0.55);
 
-    const glow = ctx.createRadialGradient(cx, cy, radius * 0.3, cx, cy, gr);
-    glow.addColorStop(0, `hsla(${sphereHue}, 85%, 70%, ${0.14 * sphereGlowAmount})`);
-    glow.addColorStop(0.35, `hsla(${sphereHue}, 70%, 55%, ${0.09 * sphereGlowAmount})`);
-    glow.addColorStop(0.7, `hsla(${sphereHue}, 60%, 40%, ${0.035 * sphereGlowAmount})`);
+    const glow = ctx.createRadialGradient(cx, cy, radius * 0.28, cx, cy, gr);
+    glow.addColorStop(0, `hsla(${sphereHue}, 85%, 70%, ${0.10 * sphereGlowAmount})`);
+    glow.addColorStop(0.45, `hsla(${sphereHue}, 70%, 55%, ${0.05 * sphereGlowAmount})`);
     glow.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     ctx.fillStyle = glow;
@@ -691,7 +806,9 @@ function hexToRgba(hex, alpha) {
 }
 
 function render() {
-  const width = canvas.clientWidth, height = canvas.clientHeight;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+
   ctx.clearRect(0, 0, width, height);
   drawBackground(width, height);
   drawSphere(warpSphereAlpha);
@@ -702,17 +819,21 @@ function render() {
 
 function startWarp(starIdx, flashX, flashY) {
   if (warpActive) return;
+  autoWarpTimer    = 0;
   warpActive       = true;
   warpProgress     = 0;
   warpCounterRotateWasActive = counterRotateStars;
   counterRotateStars = false;
   warpStarIdx      = starIdx;
   warpStartZoom    = zoom;
-  warpTargetZoom = Math.min(1.22, zoom * 1.12 + 0.08);
+  warpTargetZoom   = Math.min(1.22, zoom * 1.12 + 0.08);
   warpTargetHue    = Math.floor(Math.random() * 360);
   warpTargetAxisX  = Math.floor(Math.random() * 200) - 100;
   warpTargetAxisY  = Math.floor(Math.random() * 200) - 100;
   warpTargetAxisZ  = Math.floor(Math.random() * 200) - 100;
+  warpTargetBrightness = randomizeAround(sceneBrightness, 0.18, 0.4, 1.8);
+  warpTargetContrast   = randomizeAround(sceneContrast, 0.18, 0.4, 1.8);
+  warpTargetSpeed  = Math.round(randomizeAround(Number(speedInput.value), 0.18, 0, 720));
   warpSphereAlpha  = 1;
   warpSphereAlpha  = 1;
   starLabel.style.opacity = "0";
@@ -768,6 +889,10 @@ if (warpProgress >= 1) {
   axisXInput.value = String(warpTargetAxisX);
   axisYInput.value = String(warpTargetAxisY);
   axisZInput.value = String(warpTargetAxisZ);
+
+  sceneBrightnessInput.value = String(Math.round(warpTargetBrightness * 100));
+  sceneContrastInput.value = String(Math.round(warpTargetContrast * 100));
+  speedInput.value = String(warpTargetSpeed);
 
   sphereRotation = identityMatrix();
   sphereAngularVelocity = getPresetAngularVelocity();
@@ -839,6 +964,10 @@ function resetView() {
   lonCountInput.value = 4;
   hueInput.value    = 210;
   sphereHue         = 210;
+  sceneBrightnessInput.value = 100;
+  sceneContrastInput.value = 100;
+  speedInput.value = 120;
+  autoWarpTimer = 0;
   sphereRotation    = identityMatrix();
   viewRotation      = identityMatrix();
   sphereAngularVelocity = getPresetAngularVelocity();
@@ -857,6 +986,7 @@ function resetView() {
   warpTargetViewRotation = identityMatrix();
   warpCounterRotateWasActive = false;
   updateLabels();
+  updateSceneFilter();
   render();
 }
 
@@ -875,6 +1005,7 @@ function isPointOnSphere(e) {
 
 function onPointerDown(e) {
   if (e.target.closest(".overlay")) return;
+  if (autoWarp) return;
   updateOverlayVisibility();
 
   if (e.button === 1) {
@@ -969,6 +1100,7 @@ function endDrag(e) {
 }
 
 function onWheel(e) {
+  if (autoWarp) return;
   e.preventDefault();
   updateOverlayVisibility();
   zoom = clamp(zoom * Math.exp(-e.deltaY * 0.0012), minZoom, maxZoom);
@@ -978,6 +1110,7 @@ function onWheel(e) {
 }
 
 function onDoubleClick(e) {
+  if (autoWarp) return;
   if (isPointOnSphere(e)) { resetSphereOrientation(); updateOverlayVisibility(); }
 }
 
@@ -1008,6 +1141,14 @@ function animate(timestamp) {
   if (warpActive) {
     tickWarp(dt);
     updateLabels();
+  }
+
+  if (autoWarp && !warpActive && dragMode === "none") {
+    autoWarpTimer += dt;
+    if (autoWarpTimer >= getAutoWarpIntervalSeconds()) {
+      autoWarpTimer = 0;
+      triggerAutoWarp();
+    }
   }
 
   if (counterRotateStars && !paused && !warpActive) {
@@ -1090,6 +1231,33 @@ counterRotateStarsInput.addEventListener("change", () => {
   render();
 });
 
+sceneBrightnessInput.addEventListener("input", () => {
+  updateLabels();
+  updateOverlayVisibility();
+  render();
+});
+
+sceneContrastInput.addEventListener("input", () => {
+  updateLabels();
+  updateOverlayVisibility();
+  render();
+});
+
+autoWarpInput.addEventListener("change", () => {
+  autoWarp = autoWarpInput.checked;
+  autoWarpTimer = 0;
+
+  setControlsDisabled(autoWarp);
+  updateOverlayVisibility();
+  render();
+});
+
+autoWarpIntervalInput.addEventListener("input", () => {
+  autoWarpIntervalInput.value = String(clamp(Number(autoWarpIntervalInput.value) || 12, 2, 120));
+  autoWarpTimer = 0;
+  updateOverlayVisibility();
+});
+
 document.addEventListener("fullscreenchange", () => {
   updateFullscreenButtonState();
   resizeCanvas();
@@ -1128,8 +1296,12 @@ showStarGlow    = showStarGlowInput.checked;
 counterRotateStars = counterRotateStarsInput.checked;
 sphereGlowAmount = clamp(Number(sphereGlowAmountInput.value) / 100, 0, 3);
 starGlowAmount = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
+sceneBrightness = clamp(Number(sceneBrightnessInput.value) / 100, 0.4, 1.8);
+sceneContrast = clamp(Number(sceneContrastInput.value) / 100, 0.4, 1.8);
+autoWarp = autoWarpInput.checked;
 syncZoomFromInput();
 updateLabels();
+updateSceneFilter();
 resizeCanvas();
 setCompassVisible(showCompassInput.checked);
 resetView();
@@ -1137,4 +1309,5 @@ setUiVisible(true);
 updateOverlayVisibility();
 setFpsVisible(showFpsInput.checked);
 updateFullscreenButtonState();
+setControlsDisabled(autoWarp);
 requestAnimationFrame(animate);

@@ -152,7 +152,7 @@ body {
   grid-template-columns: 110px 1fr 84px;
   align-items: center;
   gap: 12px;
-  min-height: 36px;
+  min-height: 30px;
 }
 
 .control-inline label {
@@ -268,6 +268,24 @@ button.active {
   width: 72px;
   min-width: 72px;
   padding: 6px 8px;
+}
+
+.overlay hr {
+  border: 0;
+  height: 1px;
+  margin: 14px 0 18px;
+  background: linear-gradient(
+    90deg,
+    rgba(135, 227, 255, 0),
+    rgba(135, 227, 255, 0.22) 18%,
+    rgba(155, 227, 255, 0.38) 50%,
+    rgba(135, 227, 255, 0.22) 82%,
+    rgba(135, 227, 255, 0)
+  );
+  box-shadow:
+    0 0 10px rgba(101, 216, 255, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.03);
+  opacity: 0.95;
 }
 
 .hint {

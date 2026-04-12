@@ -20,19 +20,25 @@ Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live dem
 
 * Adjustable star density
 * Optional sphere glow
+* Adjustable sphere glow intensity
 * Optional star glow
+* Adjustable star glow intensity
 * Optional counter-rotating background stars
+* Adjustable global scene brightness
+* Adjustable global scene contrast
 * Warp transition with camera movement
 * Sphere drift during warp transitions
-* Randomized hue and axis settings after warp
+* Randomized hue, axis settings, speed, brightness, and contrast after warp
 
 ### Interface
 
 * Optional compass widget
 * Optional FPS display
 * Star hover label
+* Auto-warp mode with configurable interval
 * Auto-hiding overlay and cursor after inactivity
 * Fullscreen mode
+* Fullscreen button state sync
 
 ## Controls
 
@@ -55,6 +61,7 @@ Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live dem
 * **Sphere glow**: toggle sphere glow rendering
 * **Star glow**: toggle star glow rendering
 * **Counter-rotate**: toggle counter-rotating background stars
+* **Auto-warp**: automatically warp to random visible stars
 
 ### Sliders and inputs
 
@@ -63,10 +70,13 @@ Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live dem
 * **Star Density**: control the number of background stars
 * **Sphere Glow**: control sphere glow intensity
 * **Star Glow**: control star glow intensity
+* **Brightness**: control overall scene brightness
+* **Contrast**: control overall scene contrast
 * **Color Hue**: control the sphere color palette
 * **Axis X / Y / Z**: control weighted spin contribution per axis
 * **Horiz. lines**: set the number of horizontal sphere lines
 * **Vert. lines**: set the number of vertical sphere lines
+* **Auto-warp interval**: set the delay between automatic warps in seconds
 
 ## Tech
 
@@ -86,17 +96,19 @@ html-sphere/
 │   └── script.js
 └── img/
     └── screenshot.png
-```
+````
 
 ## Run locally
 
 Just open `index.html` in a browser.
 
+For development, using a small local static server is recommended.
+
 ## Notes
 
 This project is a lightweight interactive graphics demo built without external libraries.
 
-The sphere rendering, rotation logic, warp transitions, background stars, compass, glow effects, and UI are all handled in plain JavaScript and CSS.
+The sphere rendering, rotation logic, warp transitions, background stars, compass, glow effects, scene post-processing, auto-warp logic, and UI are all handled in plain JavaScript and CSS.
 
 ## License
 

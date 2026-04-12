@@ -16,48 +16,18 @@
 
         <aside class="overlay visible" id="overlay">
           <h1>Interactive Sphere</h1>
-            <ul class="desc">
-              <li><strong>Left-drag</strong> sphere to spin</li>
-              <li><strong>Right-drag</strong> background to rotate view</li>
-              <li><strong>Middle-click</strong> a star to warp to it</li>
-              <li><strong>Scrollwheel</strong> to zoom</li>
-              <li><strong>Double-click</strong> to reset</li>
-            </ul>
+          <ul class="desc">
+            <li><strong>Left-drag</strong> sphere to spin</li>
+            <li><strong>Right-drag</strong> background to rotate view</li>
+            <li><strong>Middle-click</strong> a star to warp to it</li>
+            <li><strong>Scrollwheel</strong> to zoom</li>
+            <li><strong>Double-click</strong> to reset</li>
+          </ul>
 
           <div class="control control-inline">
             <label for="speed">Speed</label>
             <input id="speed" type="range" min="0" max="720" value="120" step="1" />
             <div class="value" id="speedVal">120 °/s</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="zoom">Zoom</label>
-            <input id="zoom" type="range" min="1" max="240" value="100" step="1" />
-            <div class="value" id="zoomVal">1.00×</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="starDensity">Star Density</label>
-            <input id="starDensity" type="range" min="25" max="300" value="100" step="1" />
-            <div class="value" id="starDensityVal">1.00×</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="sphereGlowAmount">Sphere Glow</label>
-            <input id="sphereGlowAmount" type="range" min="0" max="300" value="100" step="1" />
-            <div class="value" id="sphereGlowAmountVal">1.00×</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="starGlowAmount">Star Glow</label>
-            <input id="starGlowAmount" type="range" min="0" max="300" value="100" step="1" />
-            <div class="value" id="starGlowAmountVal">1.00×</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="hue">Color Hue <span class="hue-preview" id="huePreview"></span></label>
-            <input id="hue" type="range" min="0" max="360" value="210" step="1" />
-            <div class="value" id="hueVal">210°</div>
           </div>
 
           <div class="control control-inline">
@@ -78,6 +48,48 @@
             <div class="value" id="axisZVal">0.10</div>
           </div>
 
+          <div class="control control-inline">
+            <label for="zoom">Zoom</label>
+            <input id="zoom" type="range" min="1" max="240" value="100" step="1" />
+            <div class="value" id="zoomVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="hue">Color Hue <span class="hue-preview" id="huePreview"></span></label>
+            <input id="hue" type="range" min="0" max="360" value="210" step="1" />
+            <div class="value" id="hueVal">210°</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="sceneBrightness">Brightness</label>
+            <input id="sceneBrightness" type="range" min="40" max="180" value="100" step="1" />
+            <div class="value" id="sceneBrightnessVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="sceneContrast">Contrast</label>
+            <input id="sceneContrast" type="range" min="40" max="180" value="100" step="1" />
+            <div class="value" id="sceneContrastVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="starDensity">Star Density</label>
+            <input id="starDensity" type="range" min="25" max="300" value="100" step="1" />
+            <div class="value" id="starDensityVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="sphereGlowAmount">Sphere Glow</label>
+            <input id="sphereGlowAmount" type="range" min="0" max="300" value="100" step="1" />
+            <div class="value" id="sphereGlowAmountVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="starGlowAmount">Star Glow</label>
+            <input id="starGlowAmount" type="range" min="0" max="300" value="100" step="1" />
+            <div class="value" id="starGlowAmountVal">1.00×</div>
+          </div>
+
           <div class="grid-2">
             <div class="control control-inline control-inline-number">
               <label for="latCount">Horiz. lines</label>
@@ -92,17 +104,6 @@
 
           <div class="control checkbox-row">
             <label class="checkbox">
-              <input type="checkbox" id="showFps" />
-              <span>Show FPS</span>
-            </label>
-            <label class="checkbox" style="margin-left: 75px !important;">
-              <input type="checkbox" id="showCompass" checked />
-              <span>Show compass</span>
-            </label>
-          </div>
-
-          <div class="control checkbox-row">
-            <label class="checkbox">
               <input type="checkbox" id="showGlow" checked />
               <span>Sphere glow</span>
             </label>
@@ -113,6 +114,39 @@
             <label class="checkbox" style="margin-left: 55px !important;">
               <input type="checkbox" id="counterRotateStars" />
               <span>Counter-rotate</span>
+            </label>
+          </div>
+
+          <div class="control checkbox-row">
+            <label class="checkbox">
+              <input type="checkbox" id="autoWarp" />
+              <span>Auto-warp</span>
+            </label>
+
+            <label class="checkbox" style="margin-left: 32px !important;">
+              <span>Interval (s)</span>
+              <input
+                id="autoWarpInterval"
+                type="number"
+                min="2"
+                max="120"
+                value="12"
+                step="1"
+                style="width: 72px; margin-left: 10px;"
+              />
+            </label>
+          </div>
+
+          <hr>
+
+          <div class="control checkbox-row">
+            <label class="checkbox">
+              <input type="checkbox" id="showFps" />
+              <span>Show FPS</span>
+            </label>
+            <label class="checkbox" style="margin-left: 75px !important;">
+              <input type="checkbox" id="showCompass" checked />
+              <span>Show compass</span>
             </label>
           </div>
 
