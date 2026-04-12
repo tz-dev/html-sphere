@@ -69,6 +69,12 @@ const ringEnabledInput = document.getElementById("ringEnabled");
 const ringInnerRadiusInput = document.getElementById("ringInnerRadius");
 const ringOuterRadiusInput = document.getElementById("ringOuterRadius");
 
+// ─── Cached layout dimensions (updated on resize) ────────────────────────────
+let cachedCanvasWidth = 0;
+let cachedCanvasHeight = 0;
+let cachedCompassWidth = 0;
+let cachedCompassHeight = 0;
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 let showGlow = true;
@@ -471,7 +477,8 @@ function getCurrentStarViewRotation() {
 // ─── Stars ────────────────────────────────────────────────────────────────────
 
 function buildStars() {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const w = cachedCanvasWidth  || canvas.clientWidth;
+  const h = cachedCanvasHeight || canvas.clientHeight;
   const df = clamp(Number(starDensityInput.value) / 100, 0.25, 8);
   const count = clamp(Math.floor((w * h / 4500) * df), 80, 12000);
   stars = [];
@@ -485,6 +492,7 @@ function buildStars() {
       name: `Star ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 999) + 1}`,
     });
   }
+  cacheStarColors();
 }
 
 function starScreenPos(star, width, height) {
@@ -493,19 +501,24 @@ function starScreenPos(star, width, height) {
   const viewForStars = useCounterRotate
     ? multiplyMatrices(transposeMatrix(viewRotation), starfieldRotation)
     : starViewRotation;
-  const world = scaleVector(star.dir, star.distance);
-  const rotated = multiplyMatrixVector(viewForStars, world);
-  if (rotated[2] < -0.6) return null;
-  const camera = 10, perspective = camera / (camera - rotated[2]);
+  const d = star.dir, dist = star.distance;
+  const wx = d[0]*dist, wy = d[1]*dist, wz = d[2]*dist;
+  const m = viewForStars;
+  const rx = m[0][0]*wx + m[0][1]*wy + m[0][2]*wz;
+  const ry = m[1][0]*wx + m[1][1]*wy + m[1][2]*wz;
+  const rz = m[2][0]*wx + m[2][1]*wy + m[2][2]*wz;
+  if (rz < -0.6) return null;
+  const camera = 10, perspective = camera / (camera - rz);
   const starZoom = 0.82 + zoom * 0.18;
-  const x = width * 0.5 + rotated[0] * height * 0.24 * perspective * starZoom;
-  const y = height * 0.5 - rotated[1] * height * 0.24 * perspective * starZoom;
+  const x = width * 0.5 + rx * height * 0.24 * perspective * starZoom;
+  const y = height * 0.5 - ry * height * 0.24 * perspective * starZoom;
   if (x < -20 || x > width + 20 || y < -20 || y > height + 20) return null;
-  return { x, y, r: star.radius * perspective * (0.9 + zoom * 0.12), rotated };
+  return { x, y, r: star.radius * perspective * (0.9 + zoom * 0.12), rotated: [rx, ry, rz] };
 }
 
 function findStarNear(mx, my) {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const w = cachedCanvasWidth  || canvas.clientWidth;
+  const h = cachedCanvasHeight || canvas.clientHeight;
   let bestIdx = -1, bestDist = 28;
   for (let i = 0; i < stars.length; i++) {
     const pos = starScreenPos(stars[i], w, h);
@@ -527,11 +540,15 @@ function resizeCanvas() {
   canvas.height = Math.max(1, Math.round(rect.height * dpr));
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
+  cachedCanvasWidth  = rect.width;
+  cachedCanvasHeight = rect.height;
   const cr = compassCanvas.getBoundingClientRect();
   compassCanvas.width = Math.max(1, Math.round(cr.width * dpr));
   compassCanvas.height = Math.max(1, Math.round(cr.height * dpr));
   compassCtx.setTransform(1, 0, 0, 1, 0, 0);
   compassCtx.scale(dpr, dpr);
+  cachedCompassWidth  = cr.width;
+  cachedCompassHeight = cr.height;
   buildStars();
 }
 
@@ -572,8 +589,8 @@ function getRandomStarIndex() {
 function getRandomVisibleStar() {
   if (!stars.length) return null;
 
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
+  const width  = cachedCanvasWidth  || canvas.clientWidth;
+  const height = cachedCanvasHeight || canvas.clientHeight;
 
   const attempts = Math.min(stars.length, 80);
 
@@ -638,8 +655,13 @@ function syncInputFromZoom() { zoomInput.value = String(Math.round(zoom * 100));
 
 // ─── Hue / color ─────────────────────────────────────────────────────────────
 
+let _cachedHslColors = null;
+let _cachedHslHue = -1;
+
 function hslColors(h) {
-  return {
+  if (h === _cachedHslHue && _cachedHslColors) return _cachedHslColors;
+  _cachedHslHue = h;
+  _cachedHslColors = {
     high:      `hsl(${h}, 90%, 92%)`,
     mid1:      `hsl(${h}, 85%, 80%)`,
     mid2:      `hsl(${h}, 70%, 60%)`,
@@ -653,6 +675,7 @@ function hslColors(h) {
     seamDark:  `rgba(8, 20, 28, 0.22)`,
     rim:       `hsla(${h}, 85%, 80%, 0.24)`,
   };
+  return _cachedHslColors;
 }
 
 function updateHuePreview() {
@@ -743,18 +766,38 @@ function drawSeamCircle(normal, offset, sphereRadius, cx, cy, c) {
   const { n, u, v } = buildPlaneBasis(normal);
   const cr = Math.sqrt(Math.max(0, 1 - offset * offset));
   const center = scaleVector(n, offset);
-  const steps = 320, points = [];
+  // Scale step count with visible radius: fewer steps when sphere is small
+  const steps = Math.max(60, Math.min(320, Math.round(sphereRadius * 2.2))) | 0;
+  const points = [];
+  const invSteps = 1 / steps;
+  const TAU = Math.PI * 2;
   for (let i = 0; i <= steps; i++) {
-    const t  = (i / steps) * Math.PI * 2;
-    const lp = addVectors(center, addVectors(scaleVector(u, Math.cos(t) * cr), scaleVector(v, Math.sin(t) * cr)));
+    const t  = i * invSteps * TAU;
+    const cosT = Math.cos(t), sinT = Math.sin(t);
+    const lp = [
+      center[0] + u[0] * cosT * cr + v[0] * sinT * cr,
+      center[1] + u[1] * cosT * cr + v[1] * sinT * cr,
+      center[2] + u[2] * cosT * cr + v[2] * sinT * cr,
+    ];
     points.push(projectPointNormalized(transformSpherePoint(lp), sphereRadius, cx, cy));
   }
   drawVisiblePolyline(points, p => p.z < 0,  c.seamDark, sphereRadius * 0.018);
   drawVisiblePolyline(points, p => p.z >= 0, c.seam,     sphereRadius * 0.012);
 }
 
+// Pre-cache star color strings when stars are built (called from buildStars)
+function cacheStarColors() {
+  for (let i = 0; i < stars.length; i++) {
+    const star = stars[i];
+    star._rv = 155 + Math.round((1 - star.tint) * 40);
+    star._gv = 205 + Math.round(star.tint * 30);
+    star._bv = 220 + Math.round(star.tint * 25);
+    star._rgbStr = `${star._rv}, ${star._gv}, ${star._bv}`;
+  }
+}
+
 function drawBackground(width, height) {
-  const cx = width * 0.5, cy = height * 0.5, minD = Math.min(width, height);
+  const cx = width * 0.5, cy = height * 0.5;
 
   const useCounterRotate = counterRotateStars && !warpActive;
 
@@ -764,20 +807,25 @@ function drawBackground(width, height) {
 
   for (let i = 0; i < stars.length; i++) {
     const star   = stars[i];
-    const world  = scaleVector(star.dir, star.distance);
-    const rotated = multiplyMatrixVector(viewForStars, world);
-    if (rotated[2] < -0.6) continue;
+    const d = star.dir;
+    const dist = star.distance;
+    // inline scaleVector + multiplyMatrixVector to avoid allocations
+    const wx = d[0] * dist, wy = d[1] * dist, wz = d[2] * dist;
+    const m  = viewForStars;
+    const rx = m[0][0]*wx + m[0][1]*wy + m[0][2]*wz;
+    const ry = m[1][0]*wx + m[1][1]*wy + m[1][2]*wz;
+    const rz = m[2][0]*wx + m[2][1]*wy + m[2][2]*wz;
+    if (rz < -0.6) continue;
 
     const camera      = 10;
-    const perspective = camera / (camera - rotated[2]);
+    const perspective = camera / (camera - rz);
     const starZoom    = 0.82 + zoom * 0.18;
-    const x           = cx + rotated[0] * height * 0.24 * perspective * starZoom;
-    const y           = cy - rotated[1] * height * 0.24 * perspective * starZoom;
+    const hScale      = height * 0.24 * perspective * starZoom;
+    const x           = cx + rx * hScale;
+    const y           = cy - ry * hScale;
     if (x < -20 || x > width + 20 || y < -20 || y > height + 20) continue;
 
-    const rv = 155 + Math.round((1 - star.tint) * 40);
-    const gv = 205 + Math.round(star.tint * 30);
-    const bv = 220 + Math.round(star.tint * 25);
+    const rgb = star._rgbStr || `${155 + Math.round((1 - star.tint) * 40)}, ${205 + Math.round(star.tint * 30)}, ${220 + Math.round(star.tint * 25)}`;
     const sr = star.radius * perspective * (0.9 + zoom * 0.12);
 
     const isHovered     = i === hoveredStarIdx && !warpActive;
@@ -797,8 +845,8 @@ function drawBackground(width, height) {
       const pulseR = isWarpTarget ? glowR * (1 + easeInQuint(warpProgress) * 3) : glowR;
 
       const glow = ctx.createRadialGradient(x, y, 0, x, y, pulseR);
-      glow.addColorStop(0, `rgba(${rv}, ${gv}, ${bv}, ${glowA * alphaScale})`);
-      glow.addColorStop(1, `rgba(${rv}, ${gv}, ${bv}, 0)`);
+      glow.addColorStop(0, `rgba(${rgb}, ${glowA * alphaScale})`);
+      glow.addColorStop(1, `rgba(${rgb}, 0)`);
 
       ctx.beginPath();
       ctx.fillStyle = glow;
@@ -811,13 +859,13 @@ function drawBackground(width, height) {
       : isWarpTarget ? sr * (1 + easeInQuint(warpProgress) * 4) : sr;
 
     ctx.beginPath();
-    ctx.fillStyle = `rgba(${rv}, ${gv}, ${bv}, ${Math.min(1, star.alpha * alphaScale)})`;
+    ctx.fillStyle = `rgba(${rgb}, ${Math.min(1, star.alpha * alphaScale)})`;
     ctx.arc(x, y, drawR, 0, Math.PI * 2);
     ctx.fill();
 
     if (isHovered && !warpActive) {
       ctx.beginPath();
-      ctx.strokeStyle = `rgba(${rv}, ${gv}, ${bv}, 0.6)`;
+      ctx.strokeStyle = `rgba(${rgb}, 0.6)`;
       ctx.lineWidth   = 0.8;
       ctx.arc(x, y, sr * 4, 0, Math.PI * 2);
       ctx.stroke();
@@ -917,8 +965,8 @@ function drawRing(isFront, alpha = 1) {
   if (!ringEnabled || alpha <= 0.005) return;
   if (ringOuterRadius <= ringInnerRadius) return;
 
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
+  const width  = cachedCanvasWidth  || canvas.clientWidth;
+  const height = cachedCanvasHeight || canvas.clientHeight;
 
   const cx = width * 0.5 + warpSphereOffsetX;
   const cy = height * 0.5 + warpSphereOffsetY;
@@ -946,7 +994,8 @@ function drawRing(isFront, alpha = 1) {
 
 function drawSphere(alpha) {
   if (alpha < 0.005) return;
-  const width = canvas.clientWidth, height = canvas.clientHeight;
+  const width  = cachedCanvasWidth  || canvas.clientWidth;
+  const height = cachedCanvasHeight || canvas.clientHeight;
   const baseCx = width * 0.5;
   const baseCy = height * 0.5;
   const cx = baseCx + warpSphereOffsetX;
@@ -1021,7 +1070,8 @@ function drawSphere(alpha) {
 }
 
 function drawCompass() {
-  const width = compassCanvas.clientWidth, height = compassCanvas.clientHeight;
+  const width  = cachedCompassWidth  || compassCanvas.clientWidth;
+  const height = cachedCompassHeight || compassCanvas.clientHeight;
   compassCtx.clearRect(0, 0, width, height);
   if (compassBox.classList.contains("hidden")) return;
 
@@ -1073,8 +1123,8 @@ function hexToRgba(hex, alpha) {
 }
 
 function render() {
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
+  const width  = cachedCanvasWidth  || canvas.clientWidth;
+  const height = cachedCanvasHeight || canvas.clientHeight;
 
   ctx.clearRect(0, 0, width, height);
   drawBackground(width, height);
@@ -1124,8 +1174,8 @@ function startWarp(starIdx, flashX, flashY) {
   const starDir = stars[starIdx]?.dir || [0, 0, 1];
   warpTargetViewRotation = getViewRotationForStarCenter(starDir, viewRotation);
 
-  const centerX = canvas.clientWidth * 0.5;
-  const centerY = canvas.clientHeight * 0.5;
+  const centerX = (cachedCanvasWidth  || canvas.clientWidth)  * 0.5;
+  const centerY = (cachedCanvasHeight || canvas.clientHeight) * 0.5;
   const dirX = flashX - centerX;
   const dirY = flashY - centerY;
   const dirLen = Math.hypot(dirX, dirY) || 1;
@@ -1135,8 +1185,8 @@ function startWarp(starIdx, flashX, flashY) {
   warpSphereOffsetX = 0;
   warpSphereOffsetY = 0;
 
-  warpOverlay.style.setProperty("--wx", `${(flashX / canvas.clientWidth)  * 100}%`);
-  warpOverlay.style.setProperty("--wy", `${(flashY / canvas.clientHeight) * 100}%`);
+  warpOverlay.style.setProperty("--wx", `${(flashX / (cachedCanvasWidth  || canvas.clientWidth))  * 100}%`);
+  warpOverlay.style.setProperty("--wy", `${(flashY / (cachedCanvasHeight || canvas.clientHeight)) * 100}%`);
   warpOverlay.classList.add("flash");
   setTimeout(() => warpOverlay.classList.remove("flash"), 350);
 }
@@ -1156,7 +1206,7 @@ function tickWarp(dt) {
     starViewRotation = viewRotation;
   }
 
-  const driftDistance = Math.max(canvas.clientWidth, canvas.clientHeight) * 0.9;
+  const driftDistance = Math.max(cachedCanvasWidth || canvas.clientWidth, cachedCanvasHeight || canvas.clientHeight) * 0.9;
   const driftT = easeInOutCubic(warpProgress);
 
   warpSphereOffsetX = warpDriftDirX * driftDistance * driftT;
@@ -1370,7 +1420,7 @@ function onPointerMove(e) {
     if (idx !== hoveredStarIdx) {
       hoveredStarIdx = idx;
       if (idx >= 0) {
-        const pos = starScreenPos(stars[idx], canvas.clientWidth, canvas.clientHeight);
+        const pos = starScreenPos(stars[idx], cachedCanvasWidth || canvas.clientWidth, cachedCanvasHeight || canvas.clientHeight);
         if (pos) {
           starLabel.textContent    = `⊕ ${stars[idx].name} — middle-click to warp`;
           starLabel.style.left     = `${pos.x}px`;
@@ -1450,6 +1500,8 @@ function updateFullscreenButtonState() {
 
 // ─── Animation loop ───────────────────────────────────────────────────────────
 
+let _fpsUpdateCounter = 0;
+
 function animate(timestamp) {
   if (!lastTime) lastTime = timestamp;
   const dt = Math.min(0.04, (timestamp - lastTime) / 1000);
@@ -1458,7 +1510,11 @@ function animate(timestamp) {
   if (dt > 0) {
     const f = 1 / dt;
     fpsSmoothed = fpsSmoothed === 0 ? f : fpsSmoothed * 0.9 + f * 0.1;
-    fpsVal.textContent = String(Math.round(fpsSmoothed));
+    // Only update FPS display every 10 frames to reduce DOM writes
+    if (++_fpsUpdateCounter >= 10) {
+      _fpsUpdateCounter = 0;
+      fpsVal.textContent = String(Math.round(fpsSmoothed));
+    }
   }
 
   if (warpActive) {
