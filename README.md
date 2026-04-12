@@ -15,6 +15,11 @@ Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live dem
 * Adjustable horizontal line count
 * Adjustable vertical line count
 * Mouse wheel and slider zoom
+* Optional planetary ring around the sphere
+* Adjustable ring inner radius
+* Adjustable ring outer radius
+* Ring inner radius constrained logically to the sphere radius minimum
+* Ring rotation synced with the sphere direction at half sphere speed
 
 ### Background and effects
 
@@ -28,7 +33,7 @@ Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live dem
 * Adjustable global scene contrast
 * Warp transition with camera movement
 * Sphere drift during warp transitions
-* Randomized hue, axis settings, speed, brightness, and contrast after warp
+* Randomized hue, axis settings, speed, brightness, contrast, ring visibility, and ring size after warp
 
 ### Interface
 
@@ -61,6 +66,7 @@ Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live dem
 * **Sphere glow**: toggle sphere glow rendering
 * **Star glow**: toggle star glow rendering
 * **Counter-rotate**: toggle counter-rotating background stars
+* **Show ring**: toggle ring rendering
 * **Auto-warp**: automatically warp to random visible stars
 
 ### Sliders and inputs
@@ -77,6 +83,8 @@ Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live dem
 * **Axis X / Y / Z**: control weighted spin contribution per axis
 * **Horiz. lines**: set the number of horizontal sphere lines
 * **Vert. lines**: set the number of vertical sphere lines
+* **Ring inner**: set the ring inner radius multiplier
+* **Ring outer**: set the ring outer radius multiplier
 * **Auto-warp interval**: set the delay between automatic warps in seconds
 
 ## Tech
@@ -109,7 +117,9 @@ For development, using a small local static server is recommended.
 
 This project is a lightweight interactive graphics demo built without external libraries.
 
-The sphere rendering, rotation logic, warp transitions, background stars, compass, glow effects, scene post-processing, auto-warp logic, and UI are all handled in plain JavaScript and CSS.
+The sphere rendering, ring rendering, rotation logic, warp transitions, background stars, compass, glow effects, scene post-processing, auto-warp logic, and UI are all handled in plain JavaScript and CSS.
+
+Warp transitions can randomize both visual scene settings and ring configuration, including whether a ring appears at all and how large it is.
 
 ## License
 

@@ -65,6 +65,10 @@ const stageHueVal = document.getElementById("stageHueVal");
 const stageIntensityInput = document.getElementById("stageIntensity");
 const stageIntensityVal = document.getElementById("stageIntensityVal");
 
+const ringEnabledInput = document.getElementById("ringEnabled");
+const ringInnerRadiusInput = document.getElementById("ringInnerRadius");
+const ringOuterRadiusInput = document.getElementById("ringOuterRadius");
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 let showGlow = true;
@@ -128,6 +132,8 @@ let warpTargetAxisZ = 10;
 let warpTargetBrightness = 1;
 let warpTargetContrast = 1;
 let warpTargetSpeed = 120;
+let warpTargetRingInnerRadius = 1.08;
+let warpTargetRingOuterRadius = 1.45;
 let warpSphereAlpha = 1;
 let hoveredStarIdx = -1;
 let warpSphereOffsetX = 0;
@@ -138,8 +144,17 @@ let warpStartViewRotation = identityMatrix();
 let warpTargetViewRotation = identityMatrix();
 let warpCounterRotateWasActive = false;
 
+let ringEnabled = false;
+let ringInnerRadius = 1.08; // Multiplikator relativ zum Kugelradius
+let ringOuterRadius = 1.45; // Multiplikator relativ zum Kugelradius
+
+let warpTargetRingEnabled = false;
+
 let stageHue = 210;
 let stageIntensity = 1;
+
+let ringRotation = identityMatrix();
+const ringSpeedFactor = 0.5;
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 
@@ -344,6 +359,28 @@ function getStageIntensity() {
 function updateStageIntensity() {
   stageIntensity = getStageIntensity();
   stage.style.setProperty("--stage-intensity", stageIntensity.toFixed(2));
+}
+
+function syncRingInputs() {
+  let inner = Number(ringInnerRadiusInput.value);
+  let outer = Number(ringOuterRadiusInput.value);
+
+  if (!Number.isFinite(inner)) inner = 1.08;
+  if (!Number.isFinite(outer)) outer = 1.45;
+
+  inner = Math.max(1.0, inner);
+
+  outer = Math.max(inner + 0.05, outer);
+
+  ringInnerRadius = inner;
+  ringOuterRadius = outer;
+  ringEnabled = ringEnabledInput.checked;
+
+  ringInnerRadiusInput.value = inner.toFixed(2);
+  ringOuterRadiusInput.value = outer.toFixed(2);
+
+  ringInnerRadiusInput.min = "1.00";
+  ringOuterRadiusInput.min = (inner + 0.05).toFixed(2);
 }
 
 // ─── Quaternion helpers (for slerp) ───────────────────────────────────────────
@@ -671,6 +708,13 @@ function transformSpherePoint(lp) {
   return multiplyMatrixVector(viewRotation, multiplyMatrixVector(sphereRotation, lp));
 }
 
+function transformRingPoint(lp) {
+  return multiplyMatrixVector(
+    viewRotation,
+    multiplyMatrixVector(ringRotation, lp)
+  );
+}
+
 function drawVisiblePolyline(points, predicate, color, lineWidth) {
   ctx.strokeStyle = color;
   ctx.lineWidth   = lineWidth;
@@ -778,6 +822,125 @@ function drawBackground(width, height) {
       ctx.arc(x, y, sr * 4, 0, Math.PI * 2);
       ctx.stroke();
     }
+  }
+}
+
+function buildRingProjectedPoints(radiusScale, sphereRadius, cx, cy, steps = 240) {
+  const pts = [];
+
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+
+    // Ring in lokaler XZ-Ebene der Kugel
+    const local = [
+      Math.cos(t) * radiusScale,
+      0,
+      Math.sin(t) * radiusScale
+    ];
+
+    const projected = projectPointNormalized(
+      transformRingPoint(local),
+      sphereRadius,
+      cx,
+      cy
+    );
+
+    pts.push(projected);
+  }
+
+  return pts;
+}
+
+function getVisibleRingSegments(outerPts, innerPts, isFront) {
+  const n = outerPts.length - 1;
+  const visible = [];
+
+  for (let i = 0; i < n; i++) {
+    const o = outerPts[i];
+    const inn = innerPts[i];
+    visible[i] = isFront ? (o.z >= 0 && inn.z >= 0) : (o.z < 0 && inn.z < 0);
+  }
+
+  const segments = [];
+  let i = 0;
+
+  while (i < n) {
+    while (i < n && !visible[i]) i++;
+    if (i >= n) break;
+
+    const start = i;
+    while (i < n && visible[i]) i++;
+    const end = i - 1;
+
+    segments.push([start, end]);
+  }
+
+  // Wrap-around zusammenführen
+  if (segments.length > 1 && visible[0] && visible[n - 1]) {
+    const first = segments[0];
+    const last = segments[segments.length - 1];
+    segments[0] = [last[0] - n, first[1]];
+    segments.pop();
+  }
+
+  return segments;
+}
+
+function drawRingBandSegment(outerPts, innerPts, start, end, fillStyle, strokeStyle, lineWidth) {
+  const n = outerPts.length - 1;
+
+  ctx.beginPath();
+
+  for (let j = start; j <= end; j++) {
+    const p = outerPts[((j % n) + n) % n];
+    if (j === start) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  }
+
+  for (let j = end; j >= start; j--) {
+    const p = innerPts[((j % n) + n) % n];
+    ctx.lineTo(p.x, p.y);
+  }
+
+  ctx.closePath();
+  ctx.fillStyle = fillStyle;
+  ctx.fill();
+
+  if (lineWidth > 0) {
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+}
+
+function drawRing(isFront, alpha = 1) {
+  if (!ringEnabled || alpha <= 0.005) return;
+  if (ringOuterRadius <= ringInnerRadius) return;
+
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+
+  const cx = width * 0.5 + warpSphereOffsetX;
+  const cy = height * 0.5 + warpSphereOffsetY;
+  const sphereRadius = Math.min(width, height) * 0.23 * zoom;
+
+  const outerPts = buildRingProjectedPoints(ringOuterRadius, sphereRadius, cx, cy);
+  const innerPts = buildRingProjectedPoints(ringInnerRadius, sphereRadius, cx, cy);
+
+  const segments = getVisibleRingSegments(outerPts, innerPts, isFront);
+
+  const fill = isFront
+    ? `hsla(${sphereHue}, 85%, 78%, ${0.26 * alpha})`
+    : `hsla(${sphereHue}, 70%, 52%, ${0.16 * alpha})`;
+
+  const stroke = isFront
+    ? `hsla(${sphereHue}, 95%, 86%, ${0.55 * alpha})`
+    : `hsla(${sphereHue}, 80%, 70%, ${0.26 * alpha})`;
+
+  const lineWidth = Math.max(1, sphereRadius * 0.008);
+
+  for (const [start, end] of segments) {
+    drawRingBandSegment(outerPts, innerPts, start, end, fill, stroke, lineWidth);
   }
 }
 
@@ -915,7 +1078,11 @@ function render() {
 
   ctx.clearRect(0, 0, width, height);
   drawBackground(width, height);
+
+  drawRing(false, warpSphereAlpha);
   drawSphere(warpSphereAlpha);
+  drawRing(true, warpSphereAlpha);
+
   drawCompass();
 }
 
@@ -938,9 +1105,17 @@ function startWarp(starIdx, flashX, flashY) {
   warpTargetBrightness = getRandomInRange(0.75, 1.5);
   warpTargetContrast = getRandomInRange(0.75, 1.5);
   warpTargetSpeed = Math.round(getRandomInRange(15, 150));
+  const nextRingInner = getRandomInRange(1.00, 1.80);
+  const nextRingOuter = getRandomInRange(nextRingInner + 0.05, nextRingInner + 0.90);
+
+  warpTargetRingInnerRadius = Number(nextRingInner.toFixed(2));
+  warpTargetRingOuterRadius = Number(nextRingOuter.toFixed(2));
   warpTargetSphereGlow = autoWarp
   ? getRandomInRange(0.2, 3.0)
   : sphereGlowAmount;
+
+  warpTargetRingEnabled = Math.random() < 0.5;
+
   warpSphereAlpha  = 1;
   starLabel.style.opacity = "0";
 
@@ -1002,6 +1177,12 @@ function tickWarp(dt) {
 
     sphereGlowAmountInput.value = String(Math.round(warpTargetSphereGlow * 100));
     sphereGlowAmount = warpTargetSphereGlow;
+
+    ringEnabled = warpTargetRingEnabled;
+    ringEnabledInput.checked = ringEnabled;
+    ringInnerRadiusInput.value = warpTargetRingInnerRadius.toFixed(2);
+    ringOuterRadiusInput.value = warpTargetRingOuterRadius.toFixed(2);
+    syncRingInputs();
 
     sphereRotation = identityMatrix();
     sphereAngularVelocity = getPresetAngularVelocity();
@@ -1068,6 +1249,7 @@ function setCompassVisible(v) { compassBox.classList.toggle("hidden", !v); }
 
 function resetSphereOrientation() {
   sphereRotation        = identityMatrix();
+  ringRotation          = identityMatrix();
   sphereAngularVelocity = getPresetAngularVelocity();
   render();
 }
@@ -1094,6 +1276,7 @@ function resetView() {
   speedInput.value = 120;
   autoWarpTimer = 0;
   sphereRotation    = identityMatrix();
+  ringRotation      = identityMatrix();
   viewRotation      = identityMatrix();
   sphereAngularVelocity = getPresetAngularVelocity();
   starfieldRotation = identityMatrix();
@@ -1110,7 +1293,14 @@ function resetView() {
   warpStartViewRotation = identityMatrix();
   warpTargetViewRotation = identityMatrix();
   warpCounterRotateWasActive = false;
+  ringEnabled = false;
+  ringInnerRadius = 1.08;
+  ringOuterRadius = 1.45;
 
+  ringEnabledInput.checked = false;
+  ringInnerRadiusInput.value = "1.08";
+  ringOuterRadiusInput.value = "1.45";
+  syncRingInputs();
   updateLabels();
   updateSceneFilter();
   updateStageIntensity();
@@ -1292,10 +1482,24 @@ function animate(timestamp) {
   if (!paused && dragMode !== "sphere" && !warpActive) {
     const target = getPresetAngularVelocity();
     const diff   = subtractVectors(target, sphereAngularVelocity);
-    sphereAngularVelocity = addVectors(sphereAngularVelocity, scaleVector(diff, clamp(autoReturnStrength * dt, 0, 1)));
+    sphereAngularVelocity = addVectors(
+      sphereAngularVelocity,
+      scaleVector(diff, clamp(autoReturnStrength * dt, 0, 1))
+    );
+
     const damping = Math.exp(-inertiaDamping * dt);
-    sphereAngularVelocity = addVectors(target, scaleVector(subtractVectors(sphereAngularVelocity, target), damping));
+    sphereAngularVelocity = addVectors(
+      target,
+      scaleVector(subtractVectors(sphereAngularVelocity, target), damping)
+    );
+
     sphereRotation = applyAngularVelocity(sphereRotation, sphereAngularVelocity, dt);
+
+    ringRotation = applyAngularVelocity(
+      ringRotation,
+      scaleVector(sphereAngularVelocity, ringSpeedFactor),
+      dt
+    );
   }
   cursorAngle += 1;
   updateCustomCursor();
@@ -1432,8 +1636,26 @@ window.addEventListener("keydown", (event) => {
     }, 100);
   }
 });
-window.addEventListener("wheel",        updateOverlayVisibility, { passive: true });
 
+ringEnabledInput.addEventListener("change", () => {
+  syncRingInputs();
+  updateOverlayVisibility();
+  render();
+});
+
+ringInnerRadiusInput.addEventListener("input", () => {
+  syncRingInputs();
+  updateOverlayVisibility();
+  render();
+});
+
+ringOuterRadiusInput.addEventListener("input", () => {
+  syncRingInputs();
+  updateOverlayVisibility();
+  render();
+});
+
+window.addEventListener("wheel",        updateOverlayVisibility, { passive: true });
 canvas.addEventListener("pointerdown",  onPointerDown);
 canvas.addEventListener("pointermove",  onPointerMove);
 canvas.addEventListener("pointerup",    endDrag);
@@ -1456,6 +1678,8 @@ sceneContrast = clamp(Number(sceneContrastInput.value) / 100, 0.4, 1.8);
 autoWarp = autoWarpInput.checked;
 stageHue = Number(stageHueInput.value);
 stageIntensity = getStageIntensity();
+ringEnabled = ringEnabledInput.checked;
+syncRingInputs();
 syncZoomFromInput();
 updateLabels();
 updateSceneFilter();
