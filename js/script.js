@@ -116,6 +116,7 @@ let warpStarIdx = -1;
 let warpStartZoom = 1;
 let warpTargetZoom = 2.2;
 let warpTargetHue = 210;
+let warpTargetSphereGlow = 1;
 let warpTargetAxisX = 30;
 let warpTargetAxisY = 100;
 let warpTargetAxisZ = 10;
@@ -237,6 +238,87 @@ function easeInOutCubic(t) {
 
 function easeInQuint(t) {
   return t * t * t * t * t;
+}
+
+function rand(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function randInt(min, max) {
+  return Math.floor(rand(min, max + 1));
+}
+
+function hslaString(h, s, l, a) {
+  return `hsla(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%, ${a.toFixed(3)})`;
+}
+
+function randomStageBackground() {
+  // Basis bleibt thematisch "space / cyan-blue / violet", aber mit genug Varianz
+  const hueBase = rand(185, 255);
+  const hueOffset = rand(-28, 28);
+
+  const r1x = rand(8, 38);
+  const r1y = rand(4, 28);
+  const r1stop = rand(18, 36);
+
+  const r2x = rand(62, 92);
+  const r2y = rand(10, 38);
+  const r2stop = rand(18, 38);
+
+  const r1Color = hslaString(
+    hueBase + rand(-16, 16),
+    rand(72, 96),
+    rand(60, 76),
+    rand(0.05, 0.16)
+  );
+
+  const r2Color = hslaString(
+    hueBase + hueOffset,
+    rand(68, 94),
+    rand(56, 74),
+    rand(0.05, 0.16)
+  );
+
+  const linAngle = `${randInt(145, 225)}deg`;
+
+  const lin1 = hslaString(
+    hueBase + rand(-18, 12),
+    rand(48, 72),
+    rand(8, 18),
+    1
+  );
+
+  const lin2 = hslaString(
+    hueBase + rand(-10, 20),
+    rand(40, 68),
+    rand(10, 24),
+    1
+  );
+
+  const lin3 = hslaString(
+    hueBase + rand(-22, 18),
+    rand(38, 62),
+    rand(3, 10),
+    1
+  );
+
+  const lin2Stop = `${randInt(35, 62)}%`;
+
+  stage.style.setProperty("--stage-r1-x", `${r1x}%`);
+  stage.style.setProperty("--stage-r1-y", `${r1y}%`);
+  stage.style.setProperty("--stage-r1-r", r1Color);
+  stage.style.setProperty("--stage-r1-stop", `${r1stop}%`);
+
+  stage.style.setProperty("--stage-r2-x", `${r2x}%`);
+  stage.style.setProperty("--stage-r2-y", `${r2y}%`);
+  stage.style.setProperty("--stage-r2-r", r2Color);
+  stage.style.setProperty("--stage-r2-stop", `${r2stop}%`);
+
+  stage.style.setProperty("--stage-lin-angle", linAngle);
+  stage.style.setProperty("--stage-lin-c1", lin1);
+  stage.style.setProperty("--stage-lin-c2", lin2);
+  stage.style.setProperty("--stage-lin-c2-stop", lin2Stop);
+  stage.style.setProperty("--stage-lin-c3", lin3);
 }
 
 // ─── Quaternion helpers (for slerp) ───────────────────────────────────────────
@@ -460,8 +542,6 @@ function setControlsDisabled(disabled) {
     axisXInput,
     axisYInput,
     axisZInput,
-    latCountInput,
-    lonCountInput,
     starDensityInput,
     sphereGlowAmountInput,
     starGlowAmountInput,
@@ -915,6 +995,8 @@ function tickWarp(dt) {
     counterRotateStarsInput.checked = counterRotateStars;
     warpCounterRotateWasActive = false;
 
+    randomStageBackground();
+
     warpActive  = false;
     warpStarIdx = -1;
     updateLabels();
@@ -1318,6 +1400,7 @@ syncZoomFromInput();
 updateLabels();
 updateSceneFilter();
 resizeCanvas();
+randomStageBackground();
 setCompassVisible(showCompassInput.checked);
 resetView();
 setUiVisible(true);

@@ -41,10 +41,42 @@ body {
 .stage {
   position: relative;
   overflow: hidden;
+
+  --stage-r1-x: 20%;
+  --stage-r1-y: 10%;
+  --stage-r1-r: rgba(88, 216, 255, 0.08);
+  --stage-r1-stop: 22%;
+
+  --stage-r2-x: 80%;
+  --stage-r2-y: 22%;
+  --stage-r2-r: rgba(86, 162, 255, 0.08);
+  --stage-r2-stop: 24%;
+
+  --stage-lin-angle: 180deg;
+  --stage-lin-c1: var(--bg-3);
+  --stage-lin-c2: var(--bg-2);
+  --stage-lin-c2-stop: 45%;
+  --stage-lin-c3: var(--bg-1);
+
   background:
-    radial-gradient(circle at 20% 10%, rgba(88, 216, 255, 0.08), transparent 22%),
-    radial-gradient(circle at 80% 22%, rgba(86, 162, 255, 0.08), transparent 24%),
-    linear-gradient(180deg, var(--bg-3), var(--bg-2) 45%, var(--bg-1));
+    radial-gradient(
+      circle at var(--stage-r1-x) var(--stage-r1-y),
+      var(--stage-r1-r),
+      transparent var(--stage-r1-stop)
+    ),
+    radial-gradient(
+      circle at var(--stage-r2-x) var(--stage-r2-y),
+      var(--stage-r2-r),
+      transparent var(--stage-r2-stop)
+    ),
+    linear-gradient(
+      var(--stage-lin-angle),
+      var(--stage-lin-c1),
+      var(--stage-lin-c2) var(--stage-lin-c2-stop),
+      var(--stage-lin-c3)
+    );
+
+  transition: background 0.9s ease;
 }
 
 .stage.ui-hidden,
