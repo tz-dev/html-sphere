@@ -82,9 +82,12 @@ body {
   transition: background 0.9s ease;
 }
 
-.stage.ui-hidden,
-.stage.ui-hidden * {
-  cursor: none !important;
+.stage.ui-hidden #customCursor,
+.stage.ui-hidden .overlay,
+.stage.ui-hidden .menu-toggle,
+.stage.ui-hidden .fps {
+  opacity: 0;
+  pointer-events: none;
 }
 
 #sphereCanvas {
@@ -124,6 +127,17 @@ body {
 }
 
 #customCursor.hidden {
+  opacity: 0;
+}
+
+#customCursor {
+  transition: opacity 0.18s ease;
+}
+
+.stage:has(#openMenuBtn:hover) #customCursor,
+.stage:has(.overlay.visible:hover) #customCursor,
+.stage:has(.compass:not(.hidden):hover) #customCursor,
+.stage:has(.fps:not(.hidden):hover) #customCursor {
   opacity: 0;
 }
 
