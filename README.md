@@ -95,7 +95,8 @@ html-sphere/
 ├── js/
 │   └── script.js
 └── img/
-    └── screenshot.png
+    ├── screenshot00.png
+    └── screenshot01.png
 ````
 
 ## Run locally
