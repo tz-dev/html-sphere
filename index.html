@@ -16,81 +16,80 @@
 
         <aside class="overlay visible" id="overlay">
           <h1>Interactive Sphere</h1>
-          <p class="desc">
-            Left-drag sphere to spin · Right-drag background to rotate view ·
-            Middle-click a star to warp to it · Wheel to zoom · Double-click to reset
-          </p>
+            <ul class="desc">
+              <li><strong>Left-drag</strong> sphere to spin</li>
+              <li><strong>Right-drag</strong> background to rotate view</li>
+              <li><strong>Middle-click</strong> a star to warp to it</li>
+              <li><strong>Scrollwheel</strong> to zoom</li>
+              <li><strong>Double-click</strong> to reset</li>
+            </ul>
 
-          <div class="control">
-            <div class="row">
-              <label for="speed">Speed</label>
-              <div class="value" id="speedVal">120 °/s</div>
-            </div>
+          <div class="control control-inline">
+            <label for="speed">Speed</label>
             <input id="speed" type="range" min="0" max="720" value="120" step="1" />
+            <div class="value" id="speedVal">120 °/s</div>
           </div>
 
-          <div class="control">
-            <div class="row">
-              <label for="zoom">Zoom</label>
-              <div class="value" id="zoomVal">1.00×</div>
-            </div>
+          <div class="control control-inline">
+            <label for="zoom">Zoom</label>
             <input id="zoom" type="range" min="1" max="240" value="100" step="1" />
+            <div class="value" id="zoomVal">1.00×</div>
           </div>
 
-          <div class="control">
-            <div class="row">
-              <label for="starDensity">Star Density</label>
-              <div class="value" id="starDensityVal">1.00×</div>
-            </div>
+          <div class="control control-inline">
+            <label for="starDensity">Star Density</label>
             <input id="starDensity" type="range" min="25" max="300" value="100" step="1" />
+            <div class="value" id="starDensityVal">1.00×</div>
           </div>
 
-          <div class="control">
-            <div class="row">
-              <label for="hue">Color Hue <span class="hue-preview" id="huePreview"></span></label>
-              <div class="value" id="hueVal">210°</div>
-            </div>
+          <div class="control control-inline">
+            <label for="sphereGlowAmount">Sphere Glow</label>
+            <input id="sphereGlowAmount" type="range" min="0" max="300" value="100" step="1" />
+            <div class="value" id="sphereGlowAmountVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="starGlowAmount">Star Glow</label>
+            <input id="starGlowAmount" type="range" min="0" max="300" value="100" step="1" />
+            <div class="value" id="starGlowAmountVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="hue">Color Hue <span class="hue-preview" id="huePreview"></span></label>
             <input id="hue" type="range" min="0" max="360" value="210" step="1" />
+            <div class="value" id="hueVal">210°</div>
           </div>
 
-          <div class="control">
-            <div class="row">
-              <label for="axisX">Axis X</label>
-              <div class="value" id="axisXVal">0.30</div>
-            </div>
+          <div class="control control-inline">
+            <label for="axisX">Axis X</label>
             <input id="axisX" type="range" min="-100" max="100" value="30" step="1" />
+            <div class="value" id="axisXVal">0.30</div>
           </div>
 
-          <div class="control">
-            <div class="row">
-              <label for="axisY">Axis Y</label>
-              <div class="value" id="axisYVal">1.00</div>
-            </div>
+          <div class="control control-inline">
+            <label for="axisY">Axis Y</label>
             <input id="axisY" type="range" min="-100" max="100" value="100" step="1" />
+            <div class="value" id="axisYVal">1.00</div>
           </div>
 
-          <div class="control">
-            <div class="row">
-              <label for="axisZ">Axis Z</label>
-              <div class="value" id="axisZVal">0.10</div>
-            </div>
+          <div class="control control-inline">
+            <label for="axisZ">Axis Z</label>
             <input id="axisZ" type="range" min="-100" max="100" value="10" step="1" />
+            <div class="value" id="axisZVal">0.10</div>
           </div>
 
           <div class="grid-2">
-            <div class="control">
-              <div class="row">
-                <label for="latCount">Horiz. lines</label>
-                <input id="latCount" type="number" min="0" max="16" value="4" step="1" />
-              </div>
+            <div class="control control-inline control-inline-number">
+              <label for="latCount">Horiz. lines</label>
+              <input id="latCount" type="number" min="0" max="16" value="4" step="1" />
             </div>
-            <div class="control">
-              <div class="row">
-                <label for="lonCount">Vert. lines</label>
-                <input id="lonCount" type="number" min="0" max="16" value="4" step="1" />
-              </div>
+
+            <div class="control control-inline control-inline-number">
+              <label for="lonCount">Vert. lines</label>
+              <input id="lonCount" type="number" min="0" max="16" value="4" step="1" />
             </div>
           </div>
+
           <div class="control checkbox-row">
             <label class="checkbox">
               <input type="checkbox" id="showFps" />
@@ -123,7 +122,6 @@
             <button id="resetBtn" class="secondary">Reset View</button>
             <button id="fullscreenBtn" class="secondary">Fullscreen</button>
           </div>
-
         </aside>
 
         <div class="fps hidden" id="fpsBox">FPS: <span id="fpsVal">0</span></div>

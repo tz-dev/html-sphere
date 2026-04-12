@@ -39,6 +39,10 @@ const compassBox = document.getElementById("compassBox");
 
 const starDensityInput = document.getElementById("starDensity");
 const starDensityVal = document.getElementById("starDensityVal");
+const sphereGlowAmountInput = document.getElementById("sphereGlowAmount");
+const sphereGlowAmountVal = document.getElementById("sphereGlowAmountVal");
+const starGlowAmountInput = document.getElementById("starGlowAmount");
+const starGlowAmountVal = document.getElementById("starGlowAmountVal");
 const showGlowInput = document.getElementById("showGlow");
 const showStarGlowInput = document.getElementById("showStarGlow");
 const counterRotateStarsInput = document.getElementById("counterRotateStars");
@@ -51,7 +55,10 @@ const huePreview = document.getElementById("huePreview");
 
 let showGlow = true;
 let showStarGlow = true;
+let sphereGlowAmount = 1;
+let starGlowAmount = 1;
 let paused = false;
+
 let lastTime = 0;
 
 let sphereRotation = identityMatrix();
@@ -80,6 +87,7 @@ let counterRotateStars = false;
 const starCounterRotateStrength = 0.1;
 let starfieldRotation = identityMatrix();
 let sphereHue = 210;
+let starViewRotation = identityMatrix();
 
 // Warp state
 let warpActive = false;
@@ -100,6 +108,7 @@ let warpDriftDirX = 0;
 let warpDriftDirY = 0;
 let warpStartViewRotation = identityMatrix();
 let warpTargetViewRotation = identityMatrix();
+let warpCounterRotateWasActive = false;
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 
@@ -285,6 +294,14 @@ function getViewRotationForStarCenter(starDir, currentViewRotation) {
   return multiplyMatrices(align, currentViewRotation);
 }
 
+function getCurrentStarViewRotation() {
+  const useCounterRotate = counterRotateStars && !warpActive;
+
+  return useCounterRotate
+    ? multiplyMatrices(transposeMatrix(viewRotation), starfieldRotation)
+    : starViewRotation;
+}
+
 // ─── Stars ────────────────────────────────────────────────────────────────────
 
 function buildStars() {
@@ -309,7 +326,7 @@ function starScreenPos(star, width, height) {
 
   const viewForStars = useCounterRotate
     ? multiplyMatrices(transposeMatrix(viewRotation), starfieldRotation)
-    : viewRotation;
+    : starViewRotation;
   const world = scaleVector(star.dir, star.distance);
   const rotated = multiplyMatrixVector(viewForStars, world);
   if (rotated[2] < -0.6) return null;
@@ -400,7 +417,12 @@ function updateHuePreview() {
 function updateLabels() {
   const [x, y, z] = getAxisWeights();
   const density = clamp(Number(starDensityInput.value) / 100, 0.25, 3);
+  sphereGlowAmount = clamp(Number(sphereGlowAmountInput.value) / 100, 0, 3);
+  starGlowAmount = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
+
   starDensityVal.textContent = `${density.toFixed(2)}×`;
+  sphereGlowAmountVal.textContent = `${sphereGlowAmount.toFixed(2)}×`;
+  starGlowAmountVal.textContent = `${starGlowAmount.toFixed(2)}×`;
   speedVal.textContent       = `${speedInput.value} °/s`;
   zoomVal.textContent        = `${zoom.toFixed(2)}×`;
   axisXVal.textContent       = x.toFixed(2);
@@ -474,7 +496,7 @@ function drawBackground(width, height) {
 
   const viewForStars = useCounterRotate
     ? multiplyMatrices(transposeMatrix(viewRotation), starfieldRotation)
-    : viewRotation;
+    : starViewRotation;
 
   for (let i = 0; i < stars.length; i++) {
     const star   = stars[i];
@@ -504,14 +526,20 @@ function drawBackground(width, height) {
         : Math.max(0, 1 - easeInOutCubic(warpProgress) * 0.7);
     }
 
-    if (showStarGlow && (star.alpha > 0.3 || isHovered || isWarpTarget)) {
-      const glowR  = isHovered || isWarpTarget ? sr * 7 : sr * 4;
-      const glowA  = isHovered ? star.alpha * 0.55 : star.alpha * 0.35;
+    if (showStarGlow && starGlowAmount > 0 && (star.alpha > 0.3 || isHovered || isWarpTarget)) {
+      const baseGlowR = isHovered || isWarpTarget ? sr * 7 : sr * 4;
+      const glowR = baseGlowR * (0.45 + starGlowAmount * 0.55);
+      const glowA = (isHovered ? star.alpha * 0.55 : star.alpha * 0.35) * starGlowAmount;
       const pulseR = isWarpTarget ? glowR * (1 + easeInQuint(warpProgress) * 3) : glowR;
-      const glow   = ctx.createRadialGradient(x, y, 0, x, y, pulseR);
+
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, pulseR);
       glow.addColorStop(0, `rgba(${rv}, ${gv}, ${bv}, ${glowA * alphaScale})`);
       glow.addColorStop(1, `rgba(${rv}, ${gv}, ${bv}, 0)`);
-      ctx.beginPath(); ctx.fillStyle = glow; ctx.arc(x, y, pulseR, 0, Math.PI * 2); ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = glow;
+      ctx.arc(x, y, pulseR, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     const drawR = isHovered
@@ -546,15 +574,20 @@ function drawSphere(alpha) {
 
   ctx.globalAlpha = alpha;
 
-  if (showGlow) {
-    const gr   = Math.max(radius * 1.9, Math.min(width, height) * 0.34);
+  if (showGlow && sphereGlowAmount > 0) {
+    const glowRadiusFactor = 1 + sphereGlowAmount * 0.35;
+    const gr = Math.max(radius * 1.9 * glowRadiusFactor, Math.min(width, height) * (0.24 + sphereGlowAmount * 0.10));
+
     const glow = ctx.createRadialGradient(cx, cy, radius * 0.3, cx, cy, gr);
-    glow.addColorStop(0,    c.glow1);
-    glow.addColorStop(0.35, c.glow2);
-    glow.addColorStop(0.7,  c.glow3);
-    glow.addColorStop(1,    "rgba(0, 0, 0, 0)");
+    glow.addColorStop(0, `hsla(${sphereHue}, 85%, 70%, ${0.14 * sphereGlowAmount})`);
+    glow.addColorStop(0.35, `hsla(${sphereHue}, 70%, 55%, ${0.09 * sphereGlowAmount})`);
+    glow.addColorStop(0.7, `hsla(${sphereHue}, 60%, 40%, ${0.035 * sphereGlowAmount})`);
+    glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+
     ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(cx, cy, gr, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, gr, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   const shell = ctx.createRadialGradient(cx - radius * 0.36, cy - radius * 0.42, radius * 0.06, cx, cy, radius * 1.08);
@@ -671,6 +704,8 @@ function startWarp(starIdx, flashX, flashY) {
   if (warpActive) return;
   warpActive       = true;
   warpProgress     = 0;
+  warpCounterRotateWasActive = counterRotateStars;
+  counterRotateStars = false;
   warpStarIdx      = starIdx;
   warpStartZoom    = zoom;
   warpTargetZoom = Math.min(1.22, zoom * 1.12 + 0.08);
@@ -715,6 +750,10 @@ function tickWarp(dt) {
   const q2 = matToQuat(warpTargetViewRotation);
   viewRotation = quatToMat(slerpQuat(q1, q2, t));
 
+  if (!counterRotateStars) {
+    starViewRotation = viewRotation;
+  }
+
   const driftDistance = Math.max(canvas.clientWidth, canvas.clientHeight) * 0.9;
   const driftT = easeInOutCubic(warpProgress);
 
@@ -742,13 +781,19 @@ if (warpProgress >= 1) {
   warpDriftDirX = 0;
   warpDriftDirY = 0;
 
-  if (counterRotateStars) {
+  if (warpCounterRotateWasActive) {
     starfieldRotation = multiplyMatrices(viewRotation, viewRotation);
+  } else {
+    starViewRotation = viewRotation;
   }
 
   if (warpStarIdx >= 0 && warpStarIdx < stars.length) {
     stars.splice(warpStarIdx, 1);
   }
+
+  counterRotateStars = warpCounterRotateWasActive;
+  counterRotateStarsInput.checked = counterRotateStars;
+  warpCounterRotateWasActive = false;
 
   warpActive  = false;
   warpStarIdx = -1;
@@ -798,6 +843,7 @@ function resetView() {
   viewRotation      = identityMatrix();
   sphereAngularVelocity = getPresetAngularVelocity();
   starfieldRotation = identityMatrix();
+  starViewRotation  = viewRotation;
   paused            = false;
   pauseBtn.textContent = "Pause";
   warpActive        = false;
@@ -809,6 +855,7 @@ function resetView() {
   warpDriftDirY = 0;
   warpStartViewRotation = identityMatrix();
   warpTargetViewRotation = identityMatrix();
+  warpCounterRotateWasActive = false;
   updateLabels();
   render();
 }
@@ -905,6 +952,10 @@ function onPointerMove(e) {
     const pitch =  ny * Math.PI * 1.6;
     viewRotation = multiplyMatrices(rotationMatrixFromAxisAngle([0, 1, 0], yaw),   viewRotation);
     viewRotation = multiplyMatrices(rotationMatrixFromAxisAngle([1, 0, 0], pitch),  viewRotation);
+
+    if (!counterRotateStars) {
+      starViewRotation = viewRotation;
+    }
   }
   render();
 }
@@ -933,6 +984,12 @@ function onDoubleClick(e) {
 function toggleFullscreen() {
   if (!document.fullscreenElement) stage.requestFullscreen?.();
   else document.exitFullscreen?.();
+}
+
+function updateFullscreenButtonState() {
+  const isFullscreen = !!document.fullscreenElement;
+  fullscreenBtn.textContent = isFullscreen ? "Exit Fullscreen" : "Fullscreen";
+  fullscreenBtn.classList.toggle("active", isFullscreen);
 }
 
 // ─── Animation loop ───────────────────────────────────────────────────────────
@@ -1004,23 +1061,54 @@ fullscreenBtn.addEventListener("click",  () => { toggleFullscreen();       updat
 showFpsInput.addEventListener("change",     () => { setFpsVisible(showFpsInput.checked);         updateOverlayVisibility(); });
 showCompassInput.addEventListener("change", () => { setCompassVisible(showCompassInput.checked);  updateOverlayVisibility(); render(); });
 starDensityInput.addEventListener("input",  () => { buildStars(); updateLabels();                 updateOverlayVisibility(); render(); });
+sphereGlowAmountInput.addEventListener("input", () => {
+  updateLabels();
+  updateOverlayVisibility();
+  render();
+});
+
+starGlowAmountInput.addEventListener("input", () => {
+  updateLabels();
+  updateOverlayVisibility();
+  render();
+});
 showGlowInput.addEventListener("change",    () => { showGlow     = showGlowInput.checked;         updateOverlayVisibility(); render(); });
 showStarGlowInput.addEventListener("change",() => { showStarGlow = showStarGlowInput.checked;     updateOverlayVisibility(); render(); });
 
 counterRotateStarsInput.addEventListener("change", () => {
-  counterRotateStars = counterRotateStarsInput.checked;
+  const currentStarViewRotation = getCurrentStarViewRotation();
+  const nextState = counterRotateStarsInput.checked;
+
+  if (nextState) {
+    starfieldRotation = multiplyMatrices(viewRotation, currentStarViewRotation);
+  } else {
+    starViewRotation = currentStarViewRotation;
+  }
+
+  counterRotateStars = nextState;
   updateOverlayVisibility();
   render();
 });
 
 document.addEventListener("fullscreenchange", () => {
-  fullscreenBtn.textContent = document.fullscreenElement ? "Exit Fullscreen" : "Fullscreen";
-  resizeCanvas(); render();
+  updateFullscreenButtonState();
+  resizeCanvas();
+  render();
 });
 
 window.addEventListener("resize",       () => { resizeCanvas(); render(); });
 window.addEventListener("pointermove",  updateOverlayVisibility, { passive: true });
-window.addEventListener("keydown",      updateOverlayVisibility);
+window.addEventListener("keydown", (event) => {
+  updateOverlayVisibility();
+
+  if (event.key === "F11") {
+    setTimeout(() => {
+      updateFullscreenButtonState();
+      resizeCanvas();
+      render();
+    }, 100);
+  }
+});
 window.addEventListener("wheel",        updateOverlayVisibility, { passive: true });
 
 canvas.addEventListener("pointerdown",  onPointerDown);
@@ -1038,6 +1126,8 @@ canvas.addEventListener("mousedown",    e => { if (e.button === 1) e.preventDefa
 showGlow        = showGlowInput.checked;
 showStarGlow    = showStarGlowInput.checked;
 counterRotateStars = counterRotateStarsInput.checked;
+sphereGlowAmount = clamp(Number(sphereGlowAmountInput.value) / 100, 0, 3);
+starGlowAmount = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
 syncZoomFromInput();
 updateLabels();
 resizeCanvas();
@@ -1046,4 +1136,5 @@ resetView();
 setUiVisible(true);
 updateOverlayVisibility();
 setFpsVisible(showFpsInput.checked);
+updateFullscreenButtonState();
 requestAnimationFrame(animate);

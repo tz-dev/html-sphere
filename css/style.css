@@ -147,6 +147,29 @@ body {
   margin-bottom: 16px;
 }
 
+.control-inline {
+  display: grid;
+  grid-template-columns: 110px 1fr 84px;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+}
+
+.control-inline label {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.control-inline .value {
+  min-width: 84px;
+  text-align: right;
+}
+
+.control-inline input[type="number"] {
+  width: 100%;
+  min-width: 0;
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -229,7 +252,16 @@ button.secondary {
 }
 
 #latCount, #lonCount {
-  width: 150px;
+  width: 65px;
+}
+
+#pauseBtn, #resetSphereBtn, #resetBtn, #fullscreenBtn {
+  width: 125px;
+}
+
+button.active {
+  border-color: rgba(123, 226, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(123, 226, 255, 0.18) inset;
 }
 
 .row input[type="number"] {
@@ -310,6 +342,11 @@ button.secondary {
   .fps {
     top: 12px;
     left: 12px;
+  }
+
+  .control-inline {
+    grid-template-columns: 92px 1fr 72px;
+    gap: 10px;
   }
 
   .compass {
