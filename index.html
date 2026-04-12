@@ -23,7 +23,7 @@
 
           <hr>
 
-          <ul class="desc">
+          <ul class="desc two-cols">
             <li><strong>Left-drag</strong> sphere to spin</li>
             <li><strong>Right-drag</strong> background to rotate view</li>
             <li><strong>Middle-click</strong> a star to warp to it</li>
@@ -64,9 +64,27 @@
           </div>
 
           <div class="control control-inline">
-            <label for="hue">Color Hue <span class="hue-preview" id="huePreview"></span></label>
+            <label for="hue">Sphere Hue <span class="hue-preview" id="huePreview" style="display: none"></span></label>
             <input id="hue" type="range" min="0" max="360" value="210" step="1" />
             <div class="value" id="hueVal">210°</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="sceneBrightness">Sphere Brightness</label>
+            <input id="sceneBrightness" type="range" min="40" max="180" value="100" step="1" />
+            <div class="value" id="sceneBrightnessVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="sceneContrast">Sphere Contrast</label>
+            <input id="sceneContrast" type="range" min="40" max="180" value="100" step="1" />
+            <div class="value" id="sceneContrastVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="starDensity">Star Density</label>
+            <input id="starDensity" type="range" min="25" max="800" value="100" step="1" />
+            <div class="value" id="starDensityVal">1.00×</div>
           </div>
 
           <div class="control control-inline">
@@ -79,24 +97,6 @@
             <label for="stageIntensity">BG Intensity</label>
             <input id="stageIntensity" type="range" min="0" max="200" value="100" step="1" />
             <div class="value" id="stageIntensityVal">1.00×</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="sceneBrightness">Brightness</label>
-            <input id="sceneBrightness" type="range" min="40" max="180" value="100" step="1" />
-            <div class="value" id="sceneBrightnessVal">1.00×</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="sceneContrast">Contrast</label>
-            <input id="sceneContrast" type="range" min="40" max="180" value="100" step="1" />
-            <div class="value" id="sceneContrastVal">1.00×</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="starDensity">Star Density</label>
-            <input id="starDensity" type="range" min="25" max="800" value="100" step="1" />
-            <div class="value" id="starDensityVal">1.00×</div>
           </div>
 
           <div class="control control-inline">
@@ -144,7 +144,7 @@
               <input type="checkbox" id="showFps" />
               <span>Show FPS</span>
             </label>
-            <label class="checkbox" style="margin-left: 75px !important;">
+            <label class="checkbox" style="margin-left: 71px !important;">
               <input type="checkbox" id="showCompass" checked />
               <span>Show compass</span>
             </label>
@@ -156,7 +156,7 @@
               <span>Auto-warp</span>
             </label>
 
-            <label class="checkbox" style="margin-left: 75px !important;">
+            <label class="checkbox" style="margin-left: 70px !important;">
               <span>Interval (s)</span>
               <input
                 id="autoWarpInterval"
@@ -165,7 +165,7 @@
                 max="120"
                 value="12"
                 step="1"
-                style="width: 72px; margin-left: 10px;"
+                style="width: 72px; margin-left: 0px;"
               />
             </label>
           </div>
