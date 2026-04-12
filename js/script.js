@@ -467,16 +467,7 @@ function setControlsDisabled(disabled) {
     starGlowAmountInput,
     hueInput,
     sceneBrightnessInput,
-    sceneContrastInput,
-    showFpsInput,
-    showCompassInput,
-    showGlowInput,
-    showStarGlowInput,
-    counterRotateStarsInput,
-    pauseBtn,
-    resetSphereBtn,
-    resetBtn,
-    fullscreenBtn
+    sceneContrastInput
   ];
 
   controls.forEach((el) => {
