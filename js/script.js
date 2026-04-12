@@ -75,7 +75,7 @@ let viewRotation = identityMatrix();
 
 let zoom = 1;
 const minZoom = 0.15;
-const maxZoom = 2.4;
+const maxZoom = 1.75;
 
 let dragMode = "none";
 let dragPointerId = null;
@@ -816,7 +816,7 @@ function startWarp(starIdx, flashX, flashY) {
   counterRotateStars = false;
   warpStarIdx      = starIdx;
   warpStartZoom    = zoom;
-  warpTargetZoom   = Math.min(1.22, zoom * 1.12 + 0.08);
+  warpTargetZoom   = getRandomInRange(minZoom, maxZoom);
   warpTargetHue    = Math.floor(Math.random() * 360);
   warpTargetAxisX  = Math.floor(Math.random() * 200) - 100;
   warpTargetAxisY  = Math.floor(Math.random() * 200) - 100;
