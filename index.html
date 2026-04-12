@@ -19,7 +19,10 @@
         </div>
 
         <aside class="overlay visible" id="overlay">
-          <h1>Interactive Sphere</h1>
+          <h1 style="text-align: center;">Interactive Sphere</h1>
+
+          <hr>
+
           <ul class="desc">
             <li><strong>Left-drag</strong> sphere to spin</li>
             <li><strong>Right-drag</strong> background to rotate view</li>
@@ -27,6 +30,8 @@
             <li><strong>Scrollwheel</strong> to zoom</li>
             <li><strong>Double-click</strong> to reset</li>
           </ul>
+
+          <hr>
 
           <div class="control control-inline">
             <label for="speed">Speed</label>
@@ -106,6 +111,8 @@
             </div>
           </div>
 
+          <hr>
+
           <div class="control checkbox-row">
             <label class="checkbox">
               <input type="checkbox" id="showGlow" checked />
@@ -121,13 +128,27 @@
             </label>
           </div>
 
+
+          <div class="control checkbox-row">
+            <label class="checkbox">
+              <input type="checkbox" id="showFps" />
+              <span>Show FPS</span>
+            </label>
+            <label class="checkbox" style="margin-left: 75px !important;">
+              <input type="checkbox" id="showCompass" checked />
+              <span>Show compass</span>
+            </label>
+          </div>
+
+          <hr>
+
           <div class="control checkbox-row">
             <label class="checkbox">
               <input type="checkbox" id="autoWarp" />
               <span>Auto-warp</span>
             </label>
 
-            <label class="checkbox" style="margin-left: 32px !important;">
+            <label class="checkbox" style="margin-left: 75px !important;">
               <span>Interval (s)</span>
               <input
                 id="autoWarpInterval"
@@ -138,19 +159,6 @@
                 step="1"
                 style="width: 72px; margin-left: 10px;"
               />
-            </label>
-          </div>
-
-          <hr>
-
-          <div class="control checkbox-row">
-            <label class="checkbox">
-              <input type="checkbox" id="showFps" />
-              <span>Show FPS</span>
-            </label>
-            <label class="checkbox" style="margin-left: 75px !important;">
-              <input type="checkbox" id="showCompass" checked />
-              <span>Show compass</span>
             </label>
           </div>
 

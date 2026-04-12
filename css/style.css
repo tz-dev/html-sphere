@@ -180,7 +180,7 @@ body {
   grid-template-columns: 110px 1fr 84px;
   align-items: center;
   gap: 12px;
-  min-height: 30px;
+  min-height: 24px;
 }
 
 .control-inline label {
