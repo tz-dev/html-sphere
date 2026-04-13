@@ -1596,7 +1596,14 @@ function tickWarp(dt) {
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 
 function setUiVisible(v) {
+  if (overlay.classList.contains("visible")) {
+    stage.classList.remove("ui-hidden");
+    openMenuBtn?.classList.add("hidden");
+    return;
+  }
+
   stage.classList.toggle("ui-hidden", !v);
+  openMenuBtn?.classList.toggle("hidden", !v);
 }
 
 function openMenu() {
@@ -1612,11 +1619,17 @@ function closeMenu() {
 }
 
 function updateOverlayVisibility() {
+  if (overlay.classList.contains("visible")) {
+    setUiVisible(true);
+    clearTimeout(inactivityTimer);
+    return;
+  }
+
   setUiVisible(true);
   clearTimeout(inactivityTimer);
 
   inactivityTimer = setTimeout(() => {
-    if (dragMode === "none") {
+    if (dragMode === "none" && !overlay.classList.contains("visible")) {
       setUiVisible(false);
     }
   }, overlayTimeoutMs);
