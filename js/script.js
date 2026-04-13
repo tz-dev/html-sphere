@@ -190,7 +190,7 @@ let warpTargetRingRotation = identityMatrix();
 let warpStartStageHue = 210;
 let warpStartStageIntensity = 1;
 let warpStartStageBrightness = 1;
-
+let warpStartSphereGlow = 1;
 let warpTargetStageHue = 210;
 let warpTargetStageIntensity = 1;
 
@@ -205,6 +205,14 @@ let warpTargetStageR1Y = 14;
 let warpTargetStageR2X = 78;
 let warpTargetStageR2Y = 24;
 let warpTargetStageLinearAngle = 180;
+
+let warpStartHue = 210;
+let warpStartAxisX = 30;
+let warpStartAxisY = 100;
+let warpStartAxisZ = 10;
+let warpStartBrightness = 1;
+let warpStartContrast = 1;
+let warpStartSpeed = 120;
 
 let ringEnabled = false;
 let ringInnerRadius = 1.08; // Multiplikator relativ zum Kugelradius
@@ -1345,6 +1353,13 @@ function startWarp(starIdx, flashX, flashY) {
   warpStarIdx      = starIdx;
   currentSourceStarLabel = stars[starIdx]?.name || "UNASSIGNED";
   warpStartZoom    = zoom;
+warpStartHue = sphereHue;
+  warpStartAxisX = Number(axisXInput.value);
+  warpStartAxisY = Number(axisYInput.value);
+  warpStartAxisZ = Number(axisZInput.value);
+  warpStartBrightness = Number(sceneBrightnessInput.value) / 100;
+  warpStartContrast = Number(sceneContrastInput.value) / 100;
+  warpStartSpeed = Number(speedInput.value);
   warpTargetZoom = getRandomInRange(0.15, 1.25);
   warpTargetHue = Math.floor(Math.random() * 360);
   warpTargetAxisX = Math.floor(Math.random() * 200) - 100;
@@ -1356,11 +1371,11 @@ function startWarp(starIdx, flashX, flashY) {
   const nextRingInner = getRandomInRange(1.00, 1.80);
   const nextRingOuter = getRandomInRange(nextRingInner + 0.05, nextRingInner + 0.90);
 
+  warpStartSphereGlow = sphereGlowAmount;
+  warpTargetSphereGlow = getRandomInRange(0.2, 3.0);
+
   warpTargetRingInnerRadius = Number(nextRingInner.toFixed(2));
   warpTargetRingOuterRadius = Number(nextRingOuter.toFixed(2));
-  warpTargetSphereGlow = autoWarp
-  ? getRandomInRange(0.2, 3.0)
-  : sphereGlowAmount;
 
   warpStartRadiusScale = sphereRadiusScale;
   warpTargetRadiusScale = autoWarp
@@ -1443,6 +1458,21 @@ function tickWarp(dt) {
 
   applyStageBackgroundFromCurrentControls();
 
+  sphereHue = Math.round(lerpAngleDeg(warpStartHue, warpTargetHue, t));
+  hueInput.value = String(sphereHue);
+
+  axisXInput.value = String(Math.round(lerp(warpStartAxisX, warpTargetAxisX, t)));
+  axisYInput.value = String(Math.round(lerp(warpStartAxisY, warpTargetAxisY, t)));
+  axisZInput.value = String(Math.round(lerp(warpStartAxisZ, warpTargetAxisZ, t)));
+
+  const currentBrightness = lerp(warpStartBrightness, warpTargetBrightness, t);
+  const currentContrast = lerp(warpStartContrast, warpTargetContrast, t);
+  const currentSpeed = lerp(warpStartSpeed, warpTargetSpeed, t);
+
+  sceneBrightnessInput.value = String(Math.round(currentBrightness * 100));
+  sceneContrastInput.value = String(Math.round(currentContrast * 100));
+  speedInput.value = String(Math.round(currentSpeed));
+
   zoom = warpStartZoom + (warpTargetZoom - warpStartZoom) * t;
   syncInputFromZoom();
 
@@ -1469,6 +1499,9 @@ function tickWarp(dt) {
 
   sphereRadiusScale = warpStartRadiusScale + (warpTargetRadiusScale - warpStartRadiusScale) * t;
   syncInputFromSphereRadius();
+
+  sphereGlowAmount = lerp(warpStartSphereGlow, warpTargetSphereGlow, t);
+  sphereGlowAmountInput.value = String(Math.round(sphereGlowAmount * 100));
 
   warpSphereAlpha = Math.max(0, 1 - easeInOutCubic(Math.max(0, warpProgress * 2 - 0.35)));
 
