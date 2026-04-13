@@ -80,6 +80,9 @@ const sphereInfoLabel = document.getElementById("sphereInfoLabel");
 const sphereInfoTitle = document.getElementById("sphereInfoTitle");
 const sphereInfoGrid = document.getElementById("sphereInfoGrid");
 
+const stageBrightnessInput = document.getElementById("stageBrightness");
+const stageBrightnessVal = document.getElementById("stageBrightnessVal");
+
 // ─── Cached layout dimensions (updated on resize) ────────────────────────────
 let cachedCanvasWidth = 0;
 let cachedCanvasHeight = 0;
@@ -134,6 +137,8 @@ let sceneContrast = 1;
 let sphereRadiusScale = 1;
 let warpTargetRadiusScale = 1;
 
+let stageBrightness = 1;
+
 let showInfoLabel = true;
 let sphereLabelIdCounter = 1;
 let currentSphereLabelId = `SPHERE-${String(sphereLabelIdCounter).padStart(3, "0")}`;
@@ -180,6 +185,14 @@ let warpTargetViewRotation = identityMatrix();
 let warpCounterRotateWasActive = false;
 let warpStartRadiusScale = 1;
 let warpTargetRingEnabled = false;
+let warpStartRingRotation = identityMatrix();
+let warpTargetRingRotation = identityMatrix();
+let warpStartStageHue = 210;
+let warpStartStageIntensity = 1;
+let warpStartStageBrightness = 1;
+
+let warpTargetStageHue = 210;
+let warpTargetStageIntensity = 1;
 
 let ringEnabled = false;
 let ringInnerRadius = 1.08; // Multiplikator relativ zum Kugelradius
@@ -285,6 +298,12 @@ function applyAngularVelocity(r, omega, dt) {
   return multiplyMatrices(rotationMatrixFromAxisAngle(scaleVector(omega, 1 / mag), mag * dt), r);
 }
 
+function randomRotationMatrix() {
+  const axis = randomUnitVector();
+  const angle = Math.random() * Math.PI * 2;
+  return rotationMatrixFromAxisAngle(axis, angle);
+}
+
 function randomUnitVector() {
   const u = Math.random() * 2 - 1;
   const a = Math.random() * Math.PI * 2;
@@ -312,7 +331,22 @@ function hslaString(h, s, l, a) {
   return `hsla(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%, ${a.toFixed(3)})`;
 }
 
-function randomStageBackground() {
+function randomizeStageControls() {
+  stageHueInput.value = String(Math.floor(getRandomInRange(0, 360)));
+  stageIntensityInput.value = String(Math.round(getRandomInRange(45, 180)));
+  stageBrightnessInput.value = String(Math.round(getRandomInRange(70, 145)));
+
+  stageHue = Number(stageHueInput.value);
+  updateStageIntensity();
+  updateStageBrightness();
+  updateLabels();
+}
+
+function randomStageBackground(randomizeControls = false) {
+  if (randomizeControls) {
+    randomizeStageControls();
+  }
+
   const intensity = stageIntensity;
   const hueBase = stageHue + rand(-28, 28);
   const hueOffset = rand(-28, 28);
@@ -389,6 +423,66 @@ function randomStageBackground() {
   updateStageIntensity();
 }
 
+function applyStageBackgroundFromCurrentControls() {
+  const hueBase = stageHue;
+  const intensity = stageIntensity;
+
+  const radialAlpha1 = clamp(0.025 + intensity * 0.045, 0, 1);
+  const radialAlpha2 = clamp(0.02 + intensity * 0.04, 0, 1);
+
+  const r1Color = hslaString(hueBase - 10, 86, 68, radialAlpha1);
+  const r2Color = hslaString(hueBase + 18, 82, 62, radialAlpha2);
+
+  const lightBoost = intensity * 6;
+  const satBoost = intensity * 6;
+
+  const lin1 = hslaString(
+    hueBase - 14,
+    clamp(54 + satBoost, 0, 100),
+    clamp(10 + lightBoost * 0.35, 0, 100),
+    1
+  );
+
+  const lin2 = hslaString(
+    hueBase + 8,
+    clamp(48 + satBoost, 0, 100),
+    clamp(14 + lightBoost * 0.45, 0, 100),
+    1
+  );
+
+  const lin3 = hslaString(
+    hueBase - 20,
+    clamp(42 + satBoost * 0.8, 0, 100),
+    clamp(4 + lightBoost * 0.2, 0, 100),
+    1
+  );
+
+  stage.style.setProperty("--stage-r1-x", "22%");
+  stage.style.setProperty("--stage-r1-y", "14%");
+  stage.style.setProperty("--stage-r1-r", r1Color);
+  stage.style.setProperty("--stage-r1-stop", "28%");
+
+  stage.style.setProperty("--stage-r2-x", "78%");
+  stage.style.setProperty("--stage-r2-y", "24%");
+  stage.style.setProperty("--stage-r2-r", r2Color);
+  stage.style.setProperty("--stage-r2-stop", "30%");
+
+  stage.style.setProperty("--stage-lin-angle", "180deg");
+  stage.style.setProperty("--stage-lin-c1", lin1);
+  stage.style.setProperty("--stage-lin-c2", lin2);
+  stage.style.setProperty("--stage-lin-c2-stop", "46%");
+  stage.style.setProperty("--stage-lin-c3", lin3);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function lerpAngleDeg(a, b, t) {
+  let diff = ((b - a + 540) % 360) - 180;
+  return (a + diff * t + 360) % 360;
+}
+
 function tickAutoWarpZoomDrift(dt) {
   if (!autoWarp || warpActive || dragMode !== "none") return;
 
@@ -413,6 +507,15 @@ function getStageIntensity() {
 function updateStageIntensity() {
   stageIntensity = getStageIntensity();
   stage.style.setProperty("--stage-intensity", stageIntensity.toFixed(2));
+}
+
+function getStageBrightness() {
+  return clamp(Number(stageBrightnessInput.value) / 100, 0.4, 1.8);
+}
+
+function updateStageBrightness() {
+  stageBrightness = getStageBrightness();
+  stage.style.setProperty("--stage-brightness", stageBrightness.toFixed(2));
 }
 
 function syncRingInputs() {
@@ -672,6 +775,7 @@ function setControlsDisabled(disabled) {
     sphereRadiusInput,
     stageHueInput,
     stageIntensityInput,
+    stageBrightnessInput,
     starDensityInput,
     sphereGlowAmountInput,
     starGlowAmountInput,
@@ -755,17 +859,23 @@ function updateLabels() {
   starGlowAmount = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
   sphereRadiusScale = getSphereRadiusScale();
   sphereRadiusVal.textContent = `${sphereRadiusScale.toFixed(2)}×`;
-  stageHue = Number(stageHueInput.value);
-  stageIntensity = getStageIntensity();
 
   starDensityVal.textContent = `${density.toFixed(2)}×`;
   sphereGlowAmountVal.textContent = `${sphereGlowAmount.toFixed(2)}×`;
   starGlowAmountVal.textContent = `${starGlowAmount.toFixed(2)}×`;
-  stageHueVal.textContent = `${stageHue}°`;
+  stageHueVal.textContent = `${Math.round(stageHue)}°`;
   stageIntensityVal.textContent = `${stageIntensity.toFixed(2)}×`;
 
   sceneBrightness = clamp(Number(sceneBrightnessInput.value) / 100, 0.4, 1.8);
   sceneContrast = clamp(Number(sceneContrastInput.value) / 100, 0.4, 1.8);
+
+  if (!warpActive) {
+    stageHue = Number(stageHueInput.value);
+    stageIntensity = getStageIntensity();
+    stageBrightness = getStageBrightness();
+  }
+
+  stageBrightnessVal.textContent = `${stageBrightness.toFixed(2)}×`;
 
   sceneBrightnessVal.textContent = `${sceneBrightness.toFixed(2)}×`;
   sceneContrastVal.textContent = `${sceneContrast.toFixed(2)}×`;
@@ -1235,10 +1345,21 @@ function startWarp(starIdx, flashX, flashY) {
 
   warpTargetRingEnabled = Math.random() < 0.5;
 
+  warpStartRingRotation = ringRotation;
+  warpTargetRingRotation = randomRotationMatrix();
+
   warpSphereAlpha  = 1;
   starLabel.style.opacity = "0";
 
   warpStartViewRotation = viewRotation;
+
+  warpStartStageHue = stageHue;
+  warpStartStageIntensity = stageIntensity;
+  warpStartStageBrightness = stageBrightness;
+
+  warpTargetStageHue = Math.floor(getRandomInRange(0, 360));
+  warpTargetStageIntensity = getRandomInRange(0.45, 1.8);
+  warpTargetStageBrightness = getRandomInRange(0.7, 1.45);
 
   const starDir = stars[starIdx]?.dir || [0, 0, 1];
   warpTargetViewRotation = getViewRotationForStarCenter(starDir, viewRotation);
@@ -1264,6 +1385,22 @@ function tickWarp(dt) {
   warpProgress = Math.min(1, warpProgress + dt / warpDuration);
   const t = easeInOutCubic(warpProgress);
 
+  stageHue = lerpAngleDeg(warpStartStageHue, warpTargetStageHue, t);
+  stageIntensity = lerp(warpStartStageIntensity, warpTargetStageIntensity, t);
+  stageBrightness = lerp(warpStartStageBrightness, warpTargetStageBrightness, t);
+
+  stageHueInput.value = String(Math.round(stageHue));
+  stageIntensityInput.value = String(Math.round(stageIntensity * 100));
+  stageBrightnessInput.value = String(Math.round(stageBrightness * 100));
+
+  updateStageIntensity();
+  updateStageBrightness();
+  stageHueVal.textContent = `${Math.round(stageHue)}°`;
+  stageIntensityVal.textContent = `${stageIntensity.toFixed(2)}×`;
+  stageBrightnessVal.textContent = `${stageBrightness.toFixed(2)}×`;
+
+  applyStageBackgroundFromCurrentControls();
+
   zoom = warpStartZoom + (warpTargetZoom - warpStartZoom) * t;
   syncInputFromZoom();
 
@@ -1271,11 +1408,18 @@ function tickWarp(dt) {
   const q2 = matToQuat(warpTargetViewRotation);
   viewRotation = quatToMat(slerpQuat(q1, q2, t));
 
+  const ringQ1 = matToQuat(warpStartRingRotation);
+  const ringQ2 = matToQuat(warpTargetRingRotation);
+  ringRotation = quatToMat(slerpQuat(ringQ1, ringQ2, t));
+
   if (!counterRotateStars) {
     starViewRotation = viewRotation;
   }
 
-  const driftDistance = Math.max(cachedCanvasWidth || canvas.clientWidth, cachedCanvasHeight || canvas.clientHeight) * 0.9;
+  const driftDistance = Math.max(
+    cachedCanvasWidth || canvas.clientWidth,
+    cachedCanvasHeight || canvas.clientHeight
+  ) * 0.9;
   const driftT = easeInOutCubic(warpProgress);
 
   warpSphereOffsetX = warpDriftDirX * driftDistance * driftT;
@@ -1287,7 +1431,21 @@ function tickWarp(dt) {
   warpSphereAlpha = Math.max(0, 1 - easeInOutCubic(Math.max(0, warpProgress * 2 - 0.35)));
 
   if (warpProgress >= 1) {
-    sphereHue      = warpTargetHue;
+    stageHue = warpTargetStageHue;
+    stageIntensity = warpTargetStageIntensity;
+    stageBrightness = warpTargetStageBrightness;
+
+    stageHueInput.value = String(Math.round(stageHue));
+    stageIntensityInput.value = String(Math.round(stageIntensity * 100));
+    stageBrightnessInput.value = String(Math.round(stageBrightness * 100));
+
+    updateStageIntensity();
+    updateStageBrightness();
+    stageHueVal.textContent = `${Math.round(stageHue)}°`;
+    stageIntensityVal.textContent = `${stageIntensity.toFixed(2)}×`;
+    stageBrightnessVal.textContent = `${stageBrightness.toFixed(2)}×`;
+
+    sphereHue = warpTargetHue;
     hueInput.value = String(warpTargetHue);
     axisXInput.value = String(warpTargetAxisX);
     axisYInput.value = String(warpTargetAxisY);
@@ -1307,12 +1465,16 @@ function tickWarp(dt) {
     syncRingInputs();
 
     sphereRotation = identityMatrix();
+    ringRotation = warpTargetRingRotation;
     sphereAngularVelocity = getPresetAngularVelocity();
 
     zoom = warpTargetZoom;
     syncInputFromZoom();
 
-    warpSphereAlpha   = 1;
+    sphereRadiusScale = warpTargetRadiusScale;
+    syncInputFromSphereRadius();
+
+    warpSphereAlpha = 1;
     warpSphereOffsetX = 0;
     warpSphereOffsetY = 0;
     warpDriftDirX = 0;
@@ -1332,17 +1494,15 @@ function tickWarp(dt) {
     counterRotateStarsInput.checked = counterRotateStars;
     warpCounterRotateWasActive = false;
 
-    sphereRadiusScale = warpTargetRadiusScale;
-    syncInputFromSphereRadius();
-
     sphereLabelIdCounter += 1;
     currentSphereLabelId = `SPHERE-${String(sphereLabelIdCounter).padStart(3, "0")}`;
     chooseNextLabelPosition();
 
-    randomStageBackground();
+    applyStageBackgroundFromCurrentControls();
 
-    warpActive  = false;
+    warpActive = false;
     warpStarIdx = -1;
+
     updateLabels();
 
     warpOverlay.style.setProperty("--wx", "50%");
@@ -1405,8 +1565,8 @@ function resetView() {
   axisXInput.value  = 30;
   axisYInput.value  = 100;
   axisZInput.value  = 10;
-  latCountInput.value = 4;
-  lonCountInput.value = 4;
+  latCountInput.value = 12;
+  lonCountInput.value = 12;
   hueInput.value    = 210;
   sphereHue         = 210;
 
@@ -1444,6 +1604,9 @@ function resetView() {
   ringInnerRadiusInput.value = "1.08";
   ringOuterRadiusInput.value = "1.45";
 
+  stageBrightnessInput.value = 100;
+  stageBrightness = 1;
+
   sphereRadiusScale = 1;
   sphereRadiusInput.value = "100";
   showInfoLabel = showInfoLabelInput.checked;
@@ -1454,6 +1617,7 @@ function resetView() {
   updateLabels();
   updateSceneFilter();
   updateStageIntensity();
+  updateStageBrightness();
   randomStageBackground();
   render();
 }
@@ -1888,6 +2052,13 @@ stageIntensityInput.addEventListener("input", () => {
   render();
 });
 
+stageBrightnessInput.addEventListener("input", () => {
+  updateLabels();
+  updateStageBrightness();
+  updateOverlayVisibility();
+  render();
+});
+
 showInfoLabelInput.addEventListener("change", () => {
   showInfoLabel = showInfoLabelInput.checked;
   updateOverlayVisibility();
@@ -1972,9 +2143,11 @@ sceneContrast = clamp(Number(sceneContrastInput.value) / 100, 0.4, 1.8);
 autoWarp = autoWarpInput.checked;
 stageHue = Number(stageHueInput.value);
 stageIntensity = getStageIntensity();
+stageBrightness = getStageBrightness();
 ringEnabled = ringEnabledInput.checked;
 sphereRadiusScale = getSphereRadiusScale();
 showInfoLabel = showInfoLabelInput.checked;
+updateStageBrightness();
 chooseNextLabelPosition();
 syncRingInputs();
 syncZoomFromInput();

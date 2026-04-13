@@ -44,6 +44,12 @@
           <hr>
 
           <div class="control control-inline">
+            <label for="zoom">Zoom</label>
+            <input id="zoom" type="range" min="1" max="240" value="100" step="1" />
+            <div class="value" id="zoomVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
             <label for="speed">Speed</label>
             <input id="speed" type="range" min="0" max="720" value="120" step="1" />
             <div class="value" id="speedVal">120 °/s</div>
@@ -73,11 +79,7 @@
             <div class="value" id="sphereRadiusVal">1.00×</div>
           </div>
 
-          <div class="control control-inline">
-            <label for="zoom">Zoom</label>
-            <input id="zoom" type="range" min="1" max="240" value="100" step="1" />
-            <div class="value" id="zoomVal">1.00×</div>
-          </div>
+          <hr>
 
           <div class="control control-inline">
             <label for="hue">Sphere Hue <span class="hue-preview" id="huePreview" style="display: none"></span></label>
@@ -103,29 +105,7 @@
             <div class="value" id="sphereGlowAmountVal">1.00×</div>
           </div>
           
-          <div class="control control-inline">
-            <label for="starDensity">Star Density</label>
-            <input id="starDensity" type="range" min="25" max="800" value="100" step="1" />
-            <div class="value" id="starDensityVal">1.00×</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="starGlowAmount">Star Glow</label>
-            <input id="starGlowAmount" type="range" min="0" max="300" value="100" step="1" />
-            <div class="value" id="starGlowAmountVal">1.00×</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="stageHue">BG Hue</label>
-            <input id="stageHue" type="range" min="0" max="360" value="210" step="1" />
-            <div class="value" id="stageHueVal">210°</div>
-          </div>
-
-          <div class="control control-inline">
-            <label for="stageIntensity">BG Intensity</label>
-            <input id="stageIntensity" type="range" min="0" max="200" value="100" step="1" />
-            <div class="value" id="stageIntensityVal">1.00×</div>
-          </div>
+          <hr>
 
           <div class="grid-2">
             <div class="control control-inline control-inline-number">
@@ -150,6 +130,42 @@
               <input id="ringOuterRadius" type="number" min="1.13" max="6" value="1.45" step="0.01" />
             </div>
           </div>
+
+          <hr>
+
+          <div class="control control-inline">
+            <label for="starDensity">Star Density</label>
+            <input id="starDensity" type="range" min="25" max="800" value="100" step="1" />
+            <div class="value" id="starDensityVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="starGlowAmount">Star Glow</label>
+            <input id="starGlowAmount" type="range" min="0" max="300" value="100" step="1" />
+            <div class="value" id="starGlowAmountVal">1.00×</div>
+          </div>
+
+          <hr>
+
+          <div class="control control-inline">
+            <label for="stageHue">BG Hue</label>
+            <input id="stageHue" type="range" min="0" max="360" value="210" step="1" />
+            <div class="value" id="stageHueVal">210°</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="stageIntensity">BG Intensity</label>
+            <input id="stageIntensity" type="range" min="0" max="200" value="100" step="1" />
+            <div class="value" id="stageIntensityVal">1.00×</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="stageBrightness">BG Brightness</label>
+            <input id="stageBrightness" type="range" min="40" max="180" value="100" step="1" />
+            <div class="value" id="stageBrightnessVal">1.00×</div>
+          </div>
+
+          <hr>
 
           <div class="control checkbox-row">
             <label class="checkbox">
