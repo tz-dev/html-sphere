@@ -14,6 +14,11 @@
         <div id="warpOverlay"></div>
         <div id="starLabel"></div>
 
+        <div id="sphereInfoLabel" class="sphere-info-label hidden" aria-hidden="true">
+          <div class="sphere-info-title" id="sphereInfoTitle">SPHERE // SPHERE-001</div>
+          <div class="sphere-info-grid" id="sphereInfoGrid"></div>
+        </div>
+
         <div id="customCursor" aria-hidden="true">
           <img src="img/cursor.png" alt="" />
         </div>
@@ -60,6 +65,12 @@
             <label for="axisZ">Axis Z</label>
             <input id="axisZ" type="range" min="-100" max="100" value="10" step="1" />
             <div class="value" id="axisZVal">0.10</div>
+          </div>
+
+          <div class="control control-inline">
+            <label for="sphereRadius">Radius</label>
+            <input id="sphereRadius" type="range" min="50" max="180" value="100" step="1" />
+            <div class="value" id="sphereRadiusVal">1.00×</div>
           </div>
 
           <div class="control control-inline">
@@ -171,12 +182,18 @@
           </div>
 
           <div class="control checkbox-row">
+
             <label class="checkbox">
-              <input type="checkbox" id="autoWarp" />
+              <input type="checkbox" id="showInfoLabel" checked />
+              <span>Show labels</span>
+            </label>
+
+            <label class="checkbox">
+              <input type="checkbox" id="autoWarp" style="margin-left: 62px !important;" />
               <span>Auto-warp</span>
             </label>
 
-            <label class="checkbox" style="margin-left: 70px !important;">
+            <label class="checkbox" style="margin-left: 85px !important;">
               <span>Interval (s)</span>
               <input
                 id="autoWarpInterval"

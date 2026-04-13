@@ -72,6 +72,14 @@ const ringOuterRadiusInput = document.getElementById("ringOuterRadius");
 const openMenuBtn = document.getElementById("openMenuBtn");
 const closeMenuBtn = document.getElementById("closeMenuBtn");
 
+const sphereRadiusInput = document.getElementById("sphereRadius");
+const sphereRadiusVal = document.getElementById("sphereRadiusVal");
+
+const showInfoLabelInput = document.getElementById("showInfoLabel");
+const sphereInfoLabel = document.getElementById("sphereInfoLabel");
+const sphereInfoTitle = document.getElementById("sphereInfoTitle");
+const sphereInfoGrid = document.getElementById("sphereInfoGrid");
+
 // ─── Cached layout dimensions (updated on resize) ────────────────────────────
 let cachedCanvasWidth = 0;
 let cachedCanvasHeight = 0;
@@ -123,12 +131,28 @@ let starViewRotation = identityMatrix();
 let sceneBrightness = 1;
 let sceneContrast = 1;
 
-// Warp state
+let sphereRadiusScale = 1;
+let warpTargetRadiusScale = 1;
 
+let showInfoLabel = true;
+let sphereLabelIdCounter = 1;
+let currentSphereLabelId = `SPHERE-${String(sphereLabelIdCounter).padStart(3, "0")}`;
+let currentSourceStarLabel = "UNASSIGNED";
+let currentLabelPosition = "right";
+const labelPositions = [
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "top-left",
+  "top-right",
+  "bottom-left",
+  "bottom-right"
+];
+
+// Warp state
 let autoWarp = false;
 let autoWarpTimer = 0;
-const autoWarpZoomDriftSpeed = 0.06;
-
 let warpActive = false;
 let warpProgress = 0;
 const warpDuration = 1.6;
@@ -154,18 +178,20 @@ let warpDriftDirY = 0;
 let warpStartViewRotation = identityMatrix();
 let warpTargetViewRotation = identityMatrix();
 let warpCounterRotateWasActive = false;
+let warpStartRadiusScale = 1;
+let warpTargetRingEnabled = false;
 
 let ringEnabled = false;
 let ringInnerRadius = 1.08; // Multiplikator relativ zum Kugelradius
 let ringOuterRadius = 1.45; // Multiplikator relativ zum Kugelradius
-
-let warpTargetRingEnabled = false;
 
 let stageHue = 210;
 let stageIntensity = 1;
 
 let ringRotation = identityMatrix();
 const ringSpeedFactor = 0.5;
+
+const autoWarpZoomDriftSpeed = 0.06;
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 
@@ -361,6 +387,23 @@ function randomStageBackground() {
   stage.style.setProperty("--stage-lin-c3", lin3);
 
   updateStageIntensity();
+}
+
+function tickAutoWarpZoomDrift(dt) {
+  if (!autoWarp || warpActive || dragMode !== "none") return;
+
+  const targetZoom = 1;
+  const delta = autoWarpZoomDriftSpeed * dt;
+
+  if (zoom < targetZoom) {
+    zoom = Math.min(targetZoom, zoom + delta);
+    syncInputFromZoom();
+    updateLabels();
+  } else if (zoom > targetZoom) {
+    zoom = Math.max(targetZoom, zoom - delta);
+    syncInputFromZoom();
+    updateLabels();
+  }
 }
 
 function getStageIntensity() {
@@ -619,23 +662,6 @@ function getRandomVisibleStar() {
   return null;
 }
 
-function tickAutoWarpZoomDrift(dt) {
-  if (!autoWarp || warpActive || dragMode !== "none") return;
-
-  const targetZoom = 1;
-  const delta = autoWarpZoomDriftSpeed * dt;
-
-  if (zoom < targetZoom) {
-    zoom = Math.min(targetZoom, zoom + delta);
-    syncInputFromZoom();
-    updateLabels();
-  } else if (zoom > targetZoom) {
-    zoom = Math.max(targetZoom, zoom - delta);
-    syncInputFromZoom();
-    updateLabels();
-  }
-}
-
 function setControlsDisabled(disabled) {
   const controls = [
     speedInput,
@@ -643,6 +669,7 @@ function setControlsDisabled(disabled) {
     axisXInput,
     axisYInput,
     axisZInput,
+    sphereRadiusInput,
     stageHueInput,
     stageIntensityInput,
     starDensityInput,
@@ -668,6 +695,18 @@ function triggerAutoWarp() {
   if (!target) return;
 
   startWarp(target.idx, target.pos.x, target.pos.y);
+}
+
+function getSphereRadiusScale() {
+  return clamp(Number(sphereRadiusInput.value) / 100, 0.5, 1.8);
+}
+
+function syncSphereRadiusFromInput() {
+  sphereRadiusScale = getSphereRadiusScale();
+}
+
+function syncInputFromSphereRadius() {
+  sphereRadiusInput.value = String(Math.round(sphereRadiusScale * 100));
 }
 
 function getLatCount() { return clamp(Number(latCountInput.value) || 0, 0, 16); }
@@ -714,7 +753,8 @@ function updateLabels() {
   const density = clamp(Number(starDensityInput.value) / 100, 0.25, 8);
   sphereGlowAmount = clamp(Number(sphereGlowAmountInput.value) / 100, 0, 3);
   starGlowAmount = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
-
+  sphereRadiusScale = getSphereRadiusScale();
+  sphereRadiusVal.textContent = `${sphereRadiusScale.toFixed(2)}×`;
   stageHue = Number(stageHueInput.value);
   stageIntensity = getStageIntensity();
 
@@ -992,7 +1032,7 @@ function drawRing(isFront, alpha = 1) {
 
   const cx = width * 0.5 + warpSphereOffsetX;
   const cy = height * 0.5 + warpSphereOffsetY;
-  const sphereRadius = Math.min(width, height) * 0.23 * zoom;
+  const sphereRadius = Math.min(width, height) * 0.23 * zoom * sphereRadiusScale;
 
   const outerPts = buildRingProjectedPoints(ringOuterRadius, sphereRadius, cx, cy);
   const innerPts = buildRingProjectedPoints(ringInnerRadius, sphereRadius, cx, cy);
@@ -1022,7 +1062,7 @@ function drawSphere(alpha) {
   const baseCy = height * 0.5;
   const cx = baseCx + warpSphereOffsetX;
   const cy = baseCy + warpSphereOffsetY;
-  const radius = Math.min(width, height) * 0.23 * zoom;
+  const radius = Math.min(width, height) * 0.23 * zoom * sphereRadiusScale;
   sphereScreen = { cx, cy, radius };
   const c = hslColors(sphereHue);
 
@@ -1154,7 +1194,8 @@ function render() {
   drawRing(false, warpSphereAlpha);
   drawSphere(warpSphereAlpha);
   drawRing(true, warpSphereAlpha);
-
+  updateSphereInfoLabelContent();
+  updateSphereInfoLabelPosition();
   drawCompass();
 }
 
@@ -1168,6 +1209,7 @@ function startWarp(starIdx, flashX, flashY) {
   warpCounterRotateWasActive = counterRotateStars;
   counterRotateStars = false;
   warpStarIdx      = starIdx;
+  currentSourceStarLabel = stars[starIdx]?.name || "UNASSIGNED";
   warpStartZoom    = zoom;
   warpTargetZoom = getRandomInRange(0.15, 1.25);
   warpTargetHue = Math.floor(Math.random() * 360);
@@ -1185,6 +1227,11 @@ function startWarp(starIdx, flashX, flashY) {
   warpTargetSphereGlow = autoWarp
   ? getRandomInRange(0.2, 3.0)
   : sphereGlowAmount;
+
+  warpStartRadiusScale = sphereRadiusScale;
+  warpTargetRadiusScale = autoWarp
+    ? getRandomInRange(0.72, 1.45)
+    : sphereRadiusScale;
 
   warpTargetRingEnabled = Math.random() < 0.5;
 
@@ -1234,6 +1281,9 @@ function tickWarp(dt) {
   warpSphereOffsetX = warpDriftDirX * driftDistance * driftT;
   warpSphereOffsetY = warpDriftDirY * driftDistance * driftT;
 
+  sphereRadiusScale = warpStartRadiusScale + (warpTargetRadiusScale - warpStartRadiusScale) * t;
+  syncInputFromSphereRadius();
+
   warpSphereAlpha = Math.max(0, 1 - easeInOutCubic(Math.max(0, warpProgress * 2 - 0.35)));
 
   if (warpProgress >= 1) {
@@ -1281,6 +1331,13 @@ function tickWarp(dt) {
     counterRotateStars = warpCounterRotateWasActive;
     counterRotateStarsInput.checked = counterRotateStars;
     warpCounterRotateWasActive = false;
+
+    sphereRadiusScale = warpTargetRadiusScale;
+    syncInputFromSphereRadius();
+
+    sphereLabelIdCounter += 1;
+    currentSphereLabelId = `SPHERE-${String(sphereLabelIdCounter).padStart(3, "0")}`;
+    chooseNextLabelPosition();
 
     randomStageBackground();
 
@@ -1383,16 +1440,135 @@ function resetView() {
   ringEnabled = false;
   ringInnerRadius = 1.08;
   ringOuterRadius = 1.45;
-
   ringEnabledInput.checked = false;
   ringInnerRadiusInput.value = "1.08";
   ringOuterRadiusInput.value = "1.45";
+
+  sphereRadiusScale = 1;
+  sphereRadiusInput.value = "100";
+  showInfoLabel = showInfoLabelInput.checked;
+  currentSphereLabelId = "SPHERE-001";
+  currentLabelPosition = "right";
+
   syncRingInputs();
   updateLabels();
   updateSceneFilter();
   updateStageIntensity();
   randomStageBackground();
   render();
+}
+
+function chooseNextLabelPosition() {
+  currentLabelPosition = labelPositions[Math.floor(Math.random() * labelPositions.length)];
+}
+
+function formatVec(v) {
+  return `${v[0].toFixed(2)} / ${v[1].toFixed(2)} / ${v[2].toFixed(2)}`;
+}
+
+function setSphereInfoRow(key, value) {
+  const k = document.createElement("div");
+  k.className = "k";
+  k.textContent = key;
+
+  const v = document.createElement("div");
+  v.className = "v";
+  v.textContent = value;
+
+  sphereInfoGrid.appendChild(k);
+  sphereInfoGrid.appendChild(v);
+}
+
+function updateSphereInfoLabelContent() {
+  if (!sphereInfoGrid) return;
+
+  sphereInfoTitle.textContent = `SPHERE // ${currentSphereLabelId}`;
+  sphereInfoGrid.innerHTML = "";
+
+  const axis = getAxisWeights();
+  const speedDeg = Number(speedInput.value);
+
+  setSphereInfoRow("Label", currentSphereLabelId);
+  setSphereInfoRow("Star", currentSourceStarLabel);
+  sphereInfoTitle.textContent = `${currentSphereLabelId} // ${currentSourceStarLabel}`;
+  setSphereInfoRow("Radius", `${sphereRadiusScale.toFixed(2)}×`);
+  setSphereInfoRow("Spin X/Y/Z", formatVec(axis));
+  setSphereInfoRow("Speed", `${speedDeg} °/s`);
+  setSphereInfoRow("Ring", ringEnabled ? "yes" : "no");
+  setSphereInfoRow("Ring radii", ringEnabled ? `${ringInnerRadius.toFixed(2)} / ${ringOuterRadius.toFixed(2)}` : "—");
+  setSphereInfoRow("Luminance", `${sphereGlowAmount.toFixed(2)}×`);
+}
+
+function updateSphereInfoLabelPosition() {
+  if (!sphereInfoLabel || !showInfoLabel) {
+    sphereInfoLabel?.classList.add("hidden");
+    return;
+  }
+
+  const width = cachedCanvasWidth || canvas.clientWidth;
+  const height = cachedCanvasHeight || canvas.clientHeight;
+  if (!width || !height) return;
+
+  const cx = sphereScreen.cx;
+  const cy = sphereScreen.cy;
+  const r = sphereScreen.radius;
+
+  const distance = r + 90;
+
+  let x = cx;
+  let y = cy;
+
+  sphereInfoLabel.className = "sphere-info-label";
+
+  switch (currentLabelPosition) {
+    case "left":
+      x = cx - distance;
+      y = cy;
+      sphereInfoLabel.classList.add("pos-left");
+      break;
+    case "right":
+      x = cx + distance;
+      y = cy;
+      sphereInfoLabel.classList.add("pos-right");
+      break;
+    case "top":
+      x = cx;
+      y = cy - distance;
+      sphereInfoLabel.classList.add("pos-top");
+      break;
+    case "bottom":
+      x = cx;
+      y = cy + distance;
+      sphereInfoLabel.classList.add("pos-bottom");
+      break;
+    case "top-left":
+      x = cx - distance * 0.78;
+      y = cy - distance * 0.78;
+      sphereInfoLabel.classList.add("pos-top-left");
+      break;
+    case "top-right":
+      x = cx + distance * 0.78;
+      y = cy - distance * 0.78;
+      sphereInfoLabel.classList.add("pos-top-right");
+      break;
+    case "bottom-left":
+      x = cx - distance * 0.78;
+      y = cy + distance * 0.78;
+      sphereInfoLabel.classList.add("pos-bottom-left");
+      break;
+    case "bottom-right":
+      x = cx + distance * 0.78;
+      y = cy + distance * 0.78;
+      sphereInfoLabel.classList.add("pos-bottom-right");
+      break;
+  }
+
+  x = clamp(x, 24, width - 24);
+  y = clamp(y, 24, height - 24);
+
+  sphereInfoLabel.style.left = `${x}px`;
+  sphereInfoLabel.style.top = `${y}px`;
+  sphereInfoLabel.classList.toggle("hidden", !showInfoLabel || warpActive);
 }
 
 // ─── Input events ─────────────────────────────────────────────────────────────
@@ -1559,6 +1735,8 @@ function animate(timestamp) {
     updateLabels();
   }
 
+  tickAutoWarpZoomDrift(dt);
+
   if (autoWarp && !warpActive && dragMode === "none") {
     autoWarpTimer += dt;
     if (autoWarpTimer >= getAutoWarpIntervalSeconds()) {
@@ -1566,8 +1744,6 @@ function animate(timestamp) {
       triggerAutoWarp();
     }
   }
-
-  tickAutoWarpZoomDrift(dt);
 
   if (counterRotateStars && !paused && !warpActive) {
     const starOmega = scaleVector(sphereAngularVelocity, -starCounterRotateStrength);
@@ -1712,6 +1888,19 @@ stageIntensityInput.addEventListener("input", () => {
   render();
 });
 
+showInfoLabelInput.addEventListener("change", () => {
+  showInfoLabel = showInfoLabelInput.checked;
+  updateOverlayVisibility();
+  render();
+});
+
+sphereRadiusInput.addEventListener("input", () => {
+  syncSphereRadiusFromInput();
+  updateLabels();
+  updateOverlayVisibility();
+  render();
+});
+
 window.addEventListener("resize",       () => { resizeCanvas(); render(); });
 window.addEventListener("pointermove", (e) => {
   pointerClientX = e.clientX;
@@ -1784,6 +1973,9 @@ autoWarp = autoWarpInput.checked;
 stageHue = Number(stageHueInput.value);
 stageIntensity = getStageIntensity();
 ringEnabled = ringEnabledInput.checked;
+sphereRadiusScale = getSphereRadiusScale();
+showInfoLabel = showInfoLabelInput.checked;
+chooseNextLabelPosition();
 syncRingInputs();
 syncZoomFromInput();
 updateLabels();

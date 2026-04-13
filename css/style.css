@@ -85,7 +85,8 @@ body {
 .stage.ui-hidden #customCursor,
 .stage.ui-hidden .overlay,
 .stage.ui-hidden .menu-toggle,
-.stage.ui-hidden .fps {
+.stage.ui-hidden .fps,
+.stage.ui-hidden .sphere-info-label {
   opacity: 0;
   pointer-events: none;
 }
@@ -175,6 +176,120 @@ body {
   transform: translate(-50%, -180%);
   white-space: nowrap;
   transition: opacity 0.15s ease;
+}
+
+.sphere-info-label {
+  position: absolute;
+  z-index: 18;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(5, 18, 28, 0.52);
+  border: 1px solid rgba(135, 227, 255, 0.26);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  pointer-events: none;
+  opacity: 1;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    left 0.25s ease,
+    top 0.25s ease;
+}
+
+.sphere-info-label.hidden {
+  opacity: 0;
+}
+
+.sphere-info-title {
+  margin-bottom: 8px;
+  color: #c8f0ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.sphere-info-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.sphere-info-grid .k {
+  color: var(--hint);
+  white-space: nowrap;
+}
+
+.sphere-info-grid .v {
+  color: var(--value);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sphere-info-label::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: rgba(5, 18, 28, 0.82);
+  border-left: 1px solid rgba(135, 227, 255, 0.26);
+  border-top: 1px solid rgba(135, 227, 255, 0.26);
+  transform: rotate(45deg);
+}
+
+.sphere-info-label.pos-right::after {
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.sphere-info-label.pos-left::after {
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%) rotate(135deg);
+}
+
+.sphere-info-label.pos-top::after {
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%) rotate(225deg);
+}
+
+.sphere-info-label.pos-bottom::after {
+  left: 50%;
+  top: -8px;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.sphere-info-label.pos-top-left::after {
+  right: 18px;
+  bottom: -8px;
+  transform: rotate(225deg);
+}
+
+.sphere-info-label.pos-top-right::after {
+  left: 18px;
+  bottom: -8px;
+  transform: rotate(225deg);
+}
+
+.sphere-info-label.pos-bottom-left::after {
+  right: 18px;
+  top: -8px;
+  transform: rotate(45deg);
+}
+
+.sphere-info-label.pos-bottom-right::after {
+  left: 18px;
+  top: -8px;
+  transform: rotate(45deg);
 }
 
 .overlay {

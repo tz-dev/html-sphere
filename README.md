@@ -22,13 +22,15 @@ The surrounding scene includes a starfield whose density can be adjusted to crea
 
 To further shape the overall look, the scene supports brightness and contrast adjustments as well as optional counter-rotating stars for added depth and motion. Background color styling can also be tuned to better match the current sphere palette.
 
-Warp transitions add movement and variation to the experience. During a warp, the camera shifts, the sphere drifts, and several scene parameters can be randomized, including hue, axis weighting, speed, brightness, contrast, and ring configuration.
+Warp transitions add movement and variation to the experience. During a warp, the camera shifts, the sphere drifts, and several scene parameters can be randomized, including hue, axis weighting, speed, brightness, contrast, sphere radius, and ring configuration.
 
 ### Interface
 
 The UI includes a set of optional overlays and utilities designed to support both exploration and performance monitoring. A compass widget can be shown to indicate orientation, and an FPS display can be enabled for performance feedback.
 
 Stars can be interacted with directly through hover labels and warp targeting. The interface also supports fullscreen mode with synchronized button state, auto-warp mode with configurable timing, and automatic hiding of the overlay and cursor after inactivity for a cleaner presentation.
+
+An optional information label panel can be displayed near the sphere. It shows the current sphere ID, the last warped star label, radius, spin axis values, speed, glow intensity, and ring configuration. The panel is positioned dynamically around the sphere and includes a directional pointer toward the object.
 
 ## Controls
 
@@ -52,6 +54,7 @@ Stars can be interacted with directly through hover labels and warp targeting. T
 | **Fullscreen** | Enter or leave fullscreen mode |
 | **Show FPS** | Toggle the FPS display |
 | **Show compass** | Toggle the compass widget |
+| **Show labels** | Toggle the sphere information label panel |
 | **Sphere glow** | Toggle sphere glow rendering |
 | **Star glow** | Toggle star glow rendering |
 | **Counter-rotate** | Toggle counter-rotating background stars |
@@ -63,6 +66,7 @@ Stars can be interacted with directly through hover labels and warp targeting. T
 | Control | Action |
 |---|---|
 | **Speed** | Control the overall automatic rotation speed |
+| **Radius** | Control the sphere size |
 | **Zoom** | Control camera zoom level |
 | **Star Density** | Control the number of background stars |
 | **Sphere Glow** | Control sphere glow intensity |
@@ -95,8 +99,7 @@ html-sphere/
 ├── js/
 │   └── script.js
 └── img/
-    ├── screenshot00.png
-    └── screenshot01.png
+    └── screenshot.png
 ````
 
 ## Run locally
