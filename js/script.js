@@ -194,12 +194,30 @@ let warpStartStageBrightness = 1;
 let warpTargetStageHue = 210;
 let warpTargetStageIntensity = 1;
 
+let warpStartStageR1X = 22;
+let warpStartStageR1Y = 14;
+let warpStartStageR2X = 78;
+let warpStartStageR2Y = 24;
+let warpStartStageLinearAngle = 180;
+
+let warpTargetStageR1X = 22;
+let warpTargetStageR1Y = 14;
+let warpTargetStageR2X = 78;
+let warpTargetStageR2Y = 24;
+let warpTargetStageLinearAngle = 180;
+
 let ringEnabled = false;
 let ringInnerRadius = 1.08; // Multiplikator relativ zum Kugelradius
 let ringOuterRadius = 1.45; // Multiplikator relativ zum Kugelradius
 
 let stageHue = 210;
 let stageIntensity = 1;
+
+let stageR1X = 22;
+let stageR1Y = 14;
+let stageR2X = 78;
+let stageR2Y = 24;
+let stageLinearAngle = 180;
 
 let ringRotation = identityMatrix();
 const ringSpeedFactor = 0.5;
@@ -351,12 +369,12 @@ function randomStageBackground(randomizeControls = false) {
   const hueBase = stageHue + rand(-28, 28);
   const hueOffset = rand(-28, 28);
 
-  const r1x = rand(8, 38);
-  const r1y = rand(4, 28);
+  stageR1X = rand(8, 38);
+  stageR1Y = rand(4, 28);
   const r1stop = rand(18, 36);
 
-  const r2x = rand(62, 92);
-  const r2y = rand(10, 38);
+  stageR2X = rand(62, 92);
+  stageR2Y = rand(10, 38);
   const r2stop = rand(18, 38);
 
   const radialAlphaMin = 0.03 + intensity * 0.02;
@@ -376,7 +394,8 @@ function randomStageBackground(randomizeControls = false) {
     clamp(rand(radialAlphaMin, radialAlphaMax), 0, 1)
   );
 
-  const linAngle = `${randInt(145, 225)}deg`;
+  stageLinearAngle = randInt(145, 225);
+  const linAngle = `${stageLinearAngle}deg`;
 
   const lightBoost = intensity * 6;
   const satBoost = intensity * 6;
@@ -404,13 +423,13 @@ function randomStageBackground(randomizeControls = false) {
 
   const lin2Stop = `${randInt(35, 62)}%`;
 
-  stage.style.setProperty("--stage-r1-x", `${r1x}%`);
-  stage.style.setProperty("--stage-r1-y", `${r1y}%`);
+  stage.style.setProperty("--stage-r1-x", `${stageR1X}%`);
+  stage.style.setProperty("--stage-r1-y", `${stageR1Y}%`);
   stage.style.setProperty("--stage-r1-r", r1Color);
   stage.style.setProperty("--stage-r1-stop", `${r1stop}%`);
 
-  stage.style.setProperty("--stage-r2-x", `${r2x}%`);
-  stage.style.setProperty("--stage-r2-y", `${r2y}%`);
+  stage.style.setProperty("--stage-r2-x", `${stageR2X}%`);
+  stage.style.setProperty("--stage-r2-y", `${stageR2Y}%`);
   stage.style.setProperty("--stage-r2-r", r2Color);
   stage.style.setProperty("--stage-r2-stop", `${r2stop}%`);
 
@@ -457,17 +476,17 @@ function applyStageBackgroundFromCurrentControls() {
     1
   );
 
-  stage.style.setProperty("--stage-r1-x", "22%");
-  stage.style.setProperty("--stage-r1-y", "14%");
+  stage.style.setProperty("--stage-r1-x", `${stageR1X}%`);
+  stage.style.setProperty("--stage-r1-y", `${stageR1Y}%`);
   stage.style.setProperty("--stage-r1-r", r1Color);
   stage.style.setProperty("--stage-r1-stop", "28%");
 
-  stage.style.setProperty("--stage-r2-x", "78%");
-  stage.style.setProperty("--stage-r2-y", "24%");
+  stage.style.setProperty("--stage-r2-x", `${stageR2X}%`);
+  stage.style.setProperty("--stage-r2-y", `${stageR2Y}%`);
   stage.style.setProperty("--stage-r2-r", r2Color);
   stage.style.setProperty("--stage-r2-stop", "30%");
 
-  stage.style.setProperty("--stage-lin-angle", "180deg");
+  stage.style.setProperty("--stage-lin-angle", `${stageLinearAngle}deg`);
   stage.style.setProperty("--stage-lin-c1", lin1);
   stage.style.setProperty("--stage-lin-c2", lin2);
   stage.style.setProperty("--stage-lin-c2-stop", "46%");
@@ -479,6 +498,11 @@ function lerp(a, b, t) {
 }
 
 function lerpAngleDeg(a, b, t) {
+  let diff = ((b - a + 540) % 360) - 180;
+  return (a + diff * t + 360) % 360;
+}
+
+function lerpAngleShortestDeg(a, b, t) {
   let diff = ((b - a + 540) % 360) - 180;
   return (a + diff * t + 360) % 360;
 }
@@ -1357,9 +1381,21 @@ function startWarp(starIdx, flashX, flashY) {
   warpStartStageIntensity = stageIntensity;
   warpStartStageBrightness = stageBrightness;
 
+  warpStartStageR1X = stageR1X;
+  warpStartStageR1Y = stageR1Y;
+  warpStartStageR2X = stageR2X;
+  warpStartStageR2Y = stageR2Y;
+  warpStartStageLinearAngle = stageLinearAngle;
+
   warpTargetStageHue = Math.floor(getRandomInRange(0, 360));
   warpTargetStageIntensity = getRandomInRange(0.45, 1.8);
   warpTargetStageBrightness = getRandomInRange(0.7, 1.45);
+
+  warpTargetStageR1X = rand(8, 38);
+  warpTargetStageR1Y = rand(4, 28);
+  warpTargetStageR2X = rand(62, 92);
+  warpTargetStageR2Y = rand(10, 38);
+  warpTargetStageLinearAngle = randInt(145, 225);
 
   const starDir = stars[starIdx]?.dir || [0, 0, 1];
   warpTargetViewRotation = getViewRotationForStarCenter(starDir, viewRotation);
@@ -1388,6 +1424,12 @@ function tickWarp(dt) {
   stageHue = lerpAngleDeg(warpStartStageHue, warpTargetStageHue, t);
   stageIntensity = lerp(warpStartStageIntensity, warpTargetStageIntensity, t);
   stageBrightness = lerp(warpStartStageBrightness, warpTargetStageBrightness, t);
+
+  stageR1X = lerp(warpStartStageR1X, warpTargetStageR1X, t);
+  stageR1Y = lerp(warpStartStageR1Y, warpTargetStageR1Y, t);
+  stageR2X = lerp(warpStartStageR2X, warpTargetStageR2X, t);
+  stageR2Y = lerp(warpStartStageR2Y, warpTargetStageR2Y, t);
+  stageLinearAngle = lerpAngleShortestDeg(warpStartStageLinearAngle, warpTargetStageLinearAngle, t);
 
   stageHueInput.value = String(Math.round(stageHue));
   stageIntensityInput.value = String(Math.round(stageIntensity * 100));
@@ -1434,6 +1476,12 @@ function tickWarp(dt) {
     stageHue = warpTargetStageHue;
     stageIntensity = warpTargetStageIntensity;
     stageBrightness = warpTargetStageBrightness;
+
+    stageR1X = warpTargetStageR1X;
+    stageR1Y = warpTargetStageR1Y;
+    stageR2X = warpTargetStageR2X;
+    stageR2Y = warpTargetStageR2Y;
+    stageLinearAngle = warpTargetStageLinearAngle;
 
     stageHueInput.value = String(Math.round(stageHue));
     stageIntensityInput.value = String(Math.round(stageIntensity * 100));
