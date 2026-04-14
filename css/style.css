@@ -627,7 +627,7 @@ button.active {
 
 .compass {
   position: absolute;
-  right: 18px;
+  left: 18px;
   bottom: 18px;
   width: 132px;
   height: 132px;
