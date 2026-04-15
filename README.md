@@ -6,6 +6,8 @@ Interactive rotating sphere in HTML, CSS, and JavaScript — check the [live dem
 
 ![Screenshot](img/screenshot01.png)
 
+![Screenshot](img/screenshot02.png)
+
 ## Features
 
 ### Sphere and scene
