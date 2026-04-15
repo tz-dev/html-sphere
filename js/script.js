@@ -160,7 +160,35 @@ let autoWarp = false;
 let autoWarpTimer = 0;
 let warpActive = false;
 let warpProgress = 0;
-const warpDuration = 1.6;
+const WARP_CONFIG = {
+  timing: {
+    select: 0.25,
+    center: 1.8,
+    zoom: 0.8,
+    exit: 0.4,
+    settle: 0.3
+  },
+
+  zoom: {
+    centerBoost: 1.08,     // leichter Zoom schon beim Zentrieren
+    centerBlend: 0.22,     // wie stark centerBoost in Startzoom eingreift
+    exitFadeStart: 0.18    // Fade beginnt erst nach 18% der Exit-Phase
+  },
+
+  drift: {
+    distanceFactor: 0.9    // 0.9 = 90% der max. Canvas-Ausdehnung
+  }
+};
+
+function getWarpTotalDuration() {
+  const t = WARP_CONFIG.timing;
+  return t.select + t.center + t.zoom + t.exit + t.settle;
+}
+
+function phaseProgress(elapsed, start, duration) {
+  if (duration <= 0) return elapsed >= start ? 1 : 0;
+  return clamp((elapsed - start) / duration, 0, 1);
+}
 let warpStarIdx = -1;
 let warpStartZoom = 1;
 let warpTargetZoom = 2.2;
@@ -182,6 +210,8 @@ let warpDriftDirX = 0;
 let warpDriftDirY = 0;
 let warpStartViewRotation = identityMatrix();
 let warpTargetViewRotation = identityMatrix();
+let warpStartStarViewRotation = identityMatrix();
+let warpTargetStarViewRotation = identityMatrix();
 let warpCounterRotateWasActive = false;
 let warpStartRadiusScale = 1;
 let warpTargetRingEnabled = false;
@@ -214,6 +244,9 @@ let warpStartBrightness = 1;
 let warpStartContrast = 1;
 let warpStartSpeed = 120;
 
+let warpElapsed = 0;
+let warpTransientStars = [];
+
 let ringEnabled = false;
 let ringInnerRadius = 1.08; // Multiplikator relativ zum Kugelradius
 let ringOuterRadius = 1.45; // Multiplikator relativ zum Kugelradius
@@ -231,6 +264,18 @@ let ringRotation = identityMatrix();
 const ringSpeedFactor = 0.5;
 
 const autoWarpZoomDriftSpeed = 0.06;
+const starFieldMotionFactor = 0.72;
+const starWarpScatterStrength = 1.35;
+
+const warpTransientStarSpawnRate = 1200;
+const warpTransientStarMaxCount = 900;
+const warpTransientStarSpeedMin = 900;
+const warpTransientStarSpeedMax = 2200;
+const warpTransientStarLifeMin = 0.55;
+const warpTransientStarLifeMax = 1.35;
+const warpTransientStarSpawnRadiusMin = 40;
+const warpTransientStarSpawnRadiusMax = 220;
+const warpTransientStarFadeIn = 0.5;
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 
@@ -663,7 +708,7 @@ function buildStars() {
   const w = cachedCanvasWidth  || canvas.clientWidth;
   const h = cachedCanvasHeight || canvas.clientHeight;
   const df = clamp(Number(starDensityInput.value) / 100, 0.25, 8);
-  const count = clamp(Math.floor((w * h / 4500) * df), 80, 12000);
+  const count = clamp(Math.floor((w * h / 2200) * df), 80, 12000);
   stars = [];
   for (let i = 0; i < count; i++) {
     stars.push({
@@ -693,8 +738,11 @@ function starScreenPos(star, width, height) {
   if (rz < -0.6) return null;
   const camera = 10, perspective = camera / (camera - rz);
   const starZoom = 0.82 + zoom * 0.18;
-  const x = width * 0.5 + rx * height * 0.24 * perspective * starZoom;
-  const y = height * 0.5 - ry * height * 0.24 * perspective * starZoom;
+  const starScaleX = width * 0.26;
+  const starScaleY = height * 0.22;
+
+  const x = width * 0.5 + rx * starScaleX * perspective * starZoom * starFieldMotionFactor;
+  const y = height * 0.5 - ry * starScaleY * perspective * starZoom * starFieldMotionFactor;
   if (x < -20 || x > width + 20 || y < -20 || y > height + 20) return null;
   return { x, y, r: star.radius * perspective * (0.9 + zoom * 0.12), rotated: [rx, ry, rz] };
 }
@@ -1000,6 +1048,74 @@ function cacheStarColors() {
   }
 }
 
+function spawnWarpTransientStars(count, width, height) {
+  const cx = width * 0.5;
+  const cy = height * 0.5;
+
+  for (let i = 0; i < count; i++) {
+    if (warpTransientStars.length >= warpTransientStarMaxCount) break;
+
+    const angle = Math.random() * Math.PI * 2;
+    const spawnRadius = rand(
+      warpTransientStarSpawnRadiusMin,
+      warpTransientStarSpawnRadiusMax
+    );
+
+    const x = cx + Math.cos(angle) * spawnRadius;
+    const y = cy + Math.sin(angle) * spawnRadius;
+
+    const dirLen = Math.hypot(x - cx, y - cy) || 1;
+    const dirX = (x - cx) / dirLen;
+    const dirY = (y - cy) / dirLen;
+
+    warpTransientStars.push({
+      x,
+      y,
+      vx: dirX * rand(warpTransientStarSpeedMin, warpTransientStarSpeedMax),
+      vy: dirY * rand(warpTransientStarSpeedMin, warpTransientStarSpeedMax),
+      r: rand(0.7, 2.4),
+      alpha: rand(0.18, 0.7),
+      life: rand(warpTransientStarLifeMin, warpTransientStarLifeMax),
+      age: 0
+    });
+  }
+}
+
+function updateWarpTransientStars(dt, width, height) {
+  for (let i = warpTransientStars.length - 1; i >= 0; i--) {
+    const s = warpTransientStars[i];
+
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    s.life -= dt;
+    s.age += dt;
+
+    if (
+      s.life <= 0 ||
+      s.x < -220 || s.x > width + 220 ||
+      s.y < -220 || s.y > height + 220
+    ) {
+      warpTransientStars.splice(i, 1);
+    }
+  }
+}
+
+function drawWarpTransientStars() {
+  if (!warpTransientStars.length) return;
+
+  for (let i = 0; i < warpTransientStars.length; i++) {
+    const s = warpTransientStars[i];
+    const fadeInT = clamp(s.age / warpTransientStarFadeIn, 0, 1);
+    const fadeOutT = clamp(s.life * 1.6, 0, 1);
+    const a = clamp(s.alpha * fadeInT * fadeOutT, 0, 1);
+
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(210, 235, 255, ${a})`;
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function drawBackground(width, height) {
   const cx = width * 0.5, cy = height * 0.5;
 
@@ -1024,10 +1140,34 @@ function drawBackground(width, height) {
     const camera      = 10;
     const perspective = camera / (camera - rz);
     const starZoom    = 0.82 + zoom * 0.18;
-    const hScale      = height * 0.24 * perspective * starZoom;
-    const x           = cx + rx * hScale;
-    const y           = cy - ry * hScale;
-    if (x < -20 || x > width + 20 || y < -20 || y > height + 20) continue;
+    const starScaleX  = width * 0.26 * perspective * starZoom * starFieldMotionFactor;
+    const starScaleY  = height * 0.22 * perspective * starZoom * starFieldMotionFactor;
+    let x = cx + rx * starScaleX;
+    let y = cy - ry * starScaleY;
+
+    if (warpActive && i !== warpStarIdx) {
+      const scatterStart = WARP_CONFIG.timing.select + WARP_CONFIG.timing.center;
+      const scatterDuration = WARP_CONFIG.timing.zoom + WARP_CONFIG.timing.exit;
+      const scatterRaw = phaseProgress(warpElapsed, scatterStart, scatterDuration);
+      const scatterT = easeInOutCubic(scatterRaw);
+
+      if (scatterT > 0) {
+        const dxFromCenter = x - cx;
+        const dyFromCenter = y - cy;
+        const distFromCenter = Math.hypot(dxFromCenter, dyFromCenter) || 1;
+
+        const dirX = dxFromCenter / distFromCenter;
+        const dirY = dyFromCenter / distFromCenter;
+
+        const scatterDistance =
+          Math.max(width, height) * starWarpScatterStrength * scatterT;
+
+        x += dirX * scatterDistance;
+        y += dirY * scatterDistance;
+      }
+    }
+
+    if (x < -40 || x > width + 40 || y < -40 || y > height + 40) continue;
 
     const rgb = star._rgbStr || `${155 + Math.round((1 - star.tint) * 40)}, ${205 + Math.round(star.tint * 30)}, ${220 + Math.round(star.tint * 25)}`;
     const sr = star.radius * perspective * (0.9 + zoom * 0.12);
@@ -1175,6 +1315,16 @@ function drawRing(isFront, alpha = 1) {
   const cx = width * 0.5 + warpSphereOffsetX;
   const cy = height * 0.5 + warpSphereOffsetY;
   const sphereRadius = Math.min(width, height) * 0.23 * zoom * sphereRadiusScale;
+  const ringVisualRadius = sphereRadius * ringOuterRadius + sphereRadius * 0.04;
+
+  if (
+    cx + ringVisualRadius < 0 ||
+    cx - ringVisualRadius > width ||
+    cy + ringVisualRadius < 0 ||
+    cy - ringVisualRadius > height
+  ) {
+    return;
+  }
 
   const outerPts = buildRingProjectedPoints(ringOuterRadius, sphereRadius, cx, cy);
   const innerPts = buildRingProjectedPoints(ringInnerRadius, sphereRadius, cx, cy);
@@ -1207,11 +1357,22 @@ function drawSphere(alpha) {
   const radius = Math.min(width, height) * 0.23 * zoom * sphereRadiusScale;
   sphereScreen = { cx, cy, radius };
   const c = hslColors(sphereHue);
+  const visualRadius = showGlow && sphereGlowAmount > 0.02
+    ? radius * (1.45 + sphereGlowAmount * 0.55)
+    : radius;
+
+  if (
+    cx + visualRadius < 0 ||
+    cx - visualRadius > width ||
+    cy + visualRadius < 0 ||
+    cy - visualRadius > height
+  ) {
+    return;
+  }
 
   ctx.globalAlpha = alpha;
 
   if (showGlow && sphereGlowAmount > 0.02) {
-    const glowRadiusFactor = 1 + sphereGlowAmount * 0.18;
     const gr = radius * (1.45 + sphereGlowAmount * 0.55);
 
     const glow = ctx.createRadialGradient(cx, cy, radius * 0.28, cx, cy, gr);
@@ -1332,7 +1493,7 @@ function render() {
 
   ctx.clearRect(0, 0, width, height);
   drawBackground(width, height);
-
+  drawWarpTransientStars();
   drawRing(false, warpSphereAlpha);
   drawSphere(warpSphereAlpha);
   drawRing(true, warpSphereAlpha);
@@ -1345,15 +1506,25 @@ function render() {
 
 function startWarp(starIdx, flashX, flashY) {
   if (warpActive) return;
-  autoWarpTimer    = 0;
-  warpActive       = true;
-  warpProgress     = 0;
+
+  const currentStarViewRotation = getCurrentStarViewRotation();
+
+  autoWarpTimer = 0;
+  warpActive = true;
+  warpProgress = 0;
+  warpElapsed = 0;
+  warpTransientStars.length = 0;
+
   warpCounterRotateWasActive = counterRotateStars;
+  warpStartViewRotation = viewRotation;
+  warpStartStarViewRotation = currentStarViewRotation;
+  starViewRotation = currentStarViewRotation;
   counterRotateStars = false;
-  warpStarIdx      = starIdx;
+
+  warpStarIdx = starIdx;
   currentSourceStarLabel = stars[starIdx]?.name || "UNASSIGNED";
-  warpStartZoom    = zoom;
-warpStartHue = sphereHue;
+  warpStartZoom = zoom;
+  warpStartHue = sphereHue;
   warpStartAxisX = Number(axisXInput.value);
   warpStartAxisY = Number(axisYInput.value);
   warpStartAxisZ = Number(axisZInput.value);
@@ -1390,8 +1561,6 @@ warpStartHue = sphereHue;
   warpSphereAlpha  = 1;
   starLabel.style.opacity = "0";
 
-  warpStartViewRotation = viewRotation;
-
   warpStartStageHue = stageHue;
   warpStartStageIntensity = stageIntensity;
   warpStartStageBrightness = stageBrightness;
@@ -1413,7 +1582,8 @@ warpStartHue = sphereHue;
   warpTargetStageLinearAngle = randInt(145, 225);
 
   const starDir = stars[starIdx]?.dir || [0, 0, 1];
-  warpTargetViewRotation = getViewRotationForStarCenter(starDir, viewRotation);
+  warpTargetStarViewRotation = getViewRotationForStarCenter(starDir, warpStartStarViewRotation);
+  warpTargetViewRotation = warpTargetStarViewRotation;
 
   const centerX = (cachedCanvasWidth  || canvas.clientWidth)  * 0.5;
   const centerY = (cachedCanvasHeight || canvas.clientHeight) * 0.5;
@@ -1433,18 +1603,73 @@ warpStartHue = sphereHue;
 }
 
 function tickWarp(dt) {
-  warpProgress = Math.min(1, warpProgress + dt / warpDuration);
-  const t = easeInOutCubic(warpProgress);
+  warpElapsed += dt;
 
-  stageHue = lerpAngleDeg(warpStartStageHue, warpTargetStageHue, t);
-  stageIntensity = lerp(warpStartStageIntensity, warpTargetStageIntensity, t);
-  stageBrightness = lerp(warpStartStageBrightness, warpTargetStageBrightness, t);
+  const tCfg = WARP_CONFIG.timing;
+  const total = getWarpTotalDuration();
 
-  stageR1X = lerp(warpStartStageR1X, warpTargetStageR1X, t);
-  stageR1Y = lerp(warpStartStageR1Y, warpTargetStageR1Y, t);
-  stageR2X = lerp(warpStartStageR2X, warpTargetStageR2X, t);
-  stageR2Y = lerp(warpStartStageR2Y, warpTargetStageR2Y, t);
-  stageLinearAngle = lerpAngleShortestDeg(warpStartStageLinearAngle, warpTargetStageLinearAngle, t);
+  const selectStart = 0;
+  const centerStart = selectStart + tCfg.select;
+  const zoomStart   = centerStart + tCfg.center;
+  const exitStart   = zoomStart + tCfg.zoom;
+  const settleStart = exitStart + tCfg.exit;
+
+  const selectT = easeInOutCubic(phaseProgress(warpElapsed, selectStart, tCfg.select));
+  const centerT = easeInOutCubic(phaseProgress(warpElapsed, centerStart, tCfg.center));
+  const zoomT   = easeInOutCubic(phaseProgress(warpElapsed, zoomStart, tCfg.zoom));
+  const exitT   = easeInOutCubic(phaseProgress(warpElapsed, exitStart, tCfg.exit));
+  const settleT = easeInOutCubic(phaseProgress(warpElapsed, settleStart, tCfg.settle));
+
+  const transientStart = tCfg.select + tCfg.center;
+  const transientDuration = tCfg.zoom + tCfg.exit;
+  const transientRaw = phaseProgress(warpElapsed, transientStart, transientDuration);
+  const transientT = easeInOutCubic(transientRaw);
+
+  const driftStart = selectStart;
+  const driftDuration = tCfg.center * 0.55 + tCfg.zoom * 0.35 + tCfg.exit * 0.2;
+  const driftT = easeInOutCubic(phaseProgress(warpElapsed, driftStart, driftDuration));
+
+  warpProgress = clamp(warpElapsed / total, 0, 1);
+
+  // ── 1) Ziel zentrieren ─────────────────────────────────────────────
+  const q1 = matToQuat(warpStartViewRotation);
+  const q2 = matToQuat(warpTargetViewRotation);
+  viewRotation = quatToMat(slerpQuat(q1, q2, centerT));
+
+  if (warpCounterRotateWasActive) {
+    const starQ1 = matToQuat(warpStartStarViewRotation);
+    const starQ2 = matToQuat(warpTargetStarViewRotation);
+    starViewRotation = quatToMat(slerpQuat(starQ1, starQ2, centerT));
+  } else {
+    starViewRotation = viewRotation;
+  }
+
+  // optional: kleiner Vorzoom während Centering
+  const centerZoomTarget = lerp(
+    warpStartZoom,
+    Math.min(maxZoom, warpStartZoom * WARP_CONFIG.zoom.centerBoost),
+    WARP_CONFIG.zoom.centerBlend
+  );
+
+  const zoomBeforeMain = lerp(warpStartZoom, centerZoomTarget, centerT);
+  const zoomMain = lerp(zoomBeforeMain, warpTargetZoom, zoomT);
+  zoom = zoomMain;
+  syncInputFromZoom();
+
+  // ── 2) Morph-/Parameterphase ───────────────────────────────────────
+  stageHue = lerpAngleDeg(warpStartStageHue, warpTargetStageHue, zoomT);
+  stageIntensity = lerp(warpStartStageIntensity, warpTargetStageIntensity, zoomT);
+  stageBrightness = lerp(warpStartStageBrightness, warpTargetStageBrightness, zoomT);
+
+  stageR1X = lerp(warpStartStageR1X, warpTargetStageR1X, zoomT);
+  stageR1Y = lerp(warpStartStageR1Y, warpTargetStageR1Y, zoomT);
+  stageR2X = lerp(warpStartStageR2X, warpTargetStageR2X, zoomT);
+  stageR2Y = lerp(warpStartStageR2Y, warpTargetStageR2Y, zoomT);
+  stageLinearAngle = lerpAngleShortestDeg(
+    warpStartStageLinearAngle,
+    warpTargetStageLinearAngle,
+    zoomT
+  );
 
   stageHueInput.value = String(Math.round(stageHue));
   stageIntensityInput.value = String(Math.round(stageIntensity * 100));
@@ -1452,60 +1677,71 @@ function tickWarp(dt) {
 
   updateStageIntensity();
   updateStageBrightness();
+
   stageHueVal.textContent = `${Math.round(stageHue)}°`;
   stageIntensityVal.textContent = `${stageIntensity.toFixed(2)}×`;
   stageBrightnessVal.textContent = `${stageBrightness.toFixed(2)}×`;
 
   applyStageBackgroundFromCurrentControls();
 
-  sphereHue = Math.round(lerpAngleDeg(warpStartHue, warpTargetHue, t));
+  sphereHue = Math.round(lerpAngleDeg(warpStartHue, warpTargetHue, zoomT));
   hueInput.value = String(sphereHue);
 
-  axisXInput.value = String(Math.round(lerp(warpStartAxisX, warpTargetAxisX, t)));
-  axisYInput.value = String(Math.round(lerp(warpStartAxisY, warpTargetAxisY, t)));
-  axisZInput.value = String(Math.round(lerp(warpStartAxisZ, warpTargetAxisZ, t)));
+  axisXInput.value = String(Math.round(lerp(warpStartAxisX, warpTargetAxisX, zoomT)));
+  axisYInput.value = String(Math.round(lerp(warpStartAxisY, warpTargetAxisY, zoomT)));
+  axisZInput.value = String(Math.round(lerp(warpStartAxisZ, warpTargetAxisZ, zoomT)));
 
-  const currentBrightness = lerp(warpStartBrightness, warpTargetBrightness, t);
-  const currentContrast = lerp(warpStartContrast, warpTargetContrast, t);
-  const currentSpeed = lerp(warpStartSpeed, warpTargetSpeed, t);
+  const currentBrightness = lerp(warpStartBrightness, warpTargetBrightness, zoomT);
+  const currentContrast = lerp(warpStartContrast, warpTargetContrast, zoomT);
+  const currentSpeed = lerp(warpStartSpeed, warpTargetSpeed, zoomT);
 
   sceneBrightnessInput.value = String(Math.round(currentBrightness * 100));
   sceneContrastInput.value = String(Math.round(currentContrast * 100));
   speedInput.value = String(Math.round(currentSpeed));
 
-  zoom = warpStartZoom + (warpTargetZoom - warpStartZoom) * t;
-  syncInputFromZoom();
+  sphereRadiusScale = lerp(warpStartRadiusScale, warpTargetRadiusScale, zoomT);
+  syncInputFromSphereRadius();
 
-  const q1 = matToQuat(warpStartViewRotation);
-  const q2 = matToQuat(warpTargetViewRotation);
-  viewRotation = quatToMat(slerpQuat(q1, q2, t));
+  sphereGlowAmount = lerp(warpStartSphereGlow, warpTargetSphereGlow, zoomT);
+  sphereGlowAmountInput.value = String(Math.round(sphereGlowAmount * 100));
 
   const ringQ1 = matToQuat(warpStartRingRotation);
   const ringQ2 = matToQuat(warpTargetRingRotation);
-  ringRotation = quatToMat(slerpQuat(ringQ1, ringQ2, t));
+  ringRotation = quatToMat(slerpQuat(ringQ1, ringQ2, zoomT));
 
-  if (!counterRotateStars) {
-    starViewRotation = viewRotation;
-  }
-
+  // ── 3) Exit-Drift / Fade ────────────────────────────────────────────
   const driftDistance = Math.max(
     cachedCanvasWidth || canvas.clientWidth,
     cachedCanvasHeight || canvas.clientHeight
-  ) * 0.9;
-  const driftT = easeInOutCubic(warpProgress);
+  ) * WARP_CONFIG.drift.distanceFactor;
 
   warpSphereOffsetX = warpDriftDirX * driftDistance * driftT;
   warpSphereOffsetY = warpDriftDirY * driftDistance * driftT;
 
-  sphereRadiusScale = warpStartRadiusScale + (warpTargetRadiusScale - warpStartRadiusScale) * t;
-  syncInputFromSphereRadius();
+  const fadeLocal = clamp(
+    (exitT - WARP_CONFIG.zoom.exitFadeStart) /
+    (1 - WARP_CONFIG.zoom.exitFadeStart),
+    0,
+    1
+  );
 
-  sphereGlowAmount = lerp(warpStartSphereGlow, warpTargetSphereGlow, t);
-  sphereGlowAmountInput.value = String(Math.round(sphereGlowAmount * 100));
+  warpSphereAlpha = 1 - easeInOutCubic(fadeLocal);
 
-  warpSphereAlpha = Math.max(0, 1 - easeInOutCubic(Math.max(0, warpProgress * 2 - 0.35)));
+  if (transientT > 0 && transientT < 1) {
+    const width = cachedCanvasWidth || canvas.clientWidth;
+    const height = cachedCanvasHeight || canvas.clientHeight;
 
-  if (warpProgress >= 1) {
+    const spawnCount = Math.floor(warpTransientStarSpawnRate * dt);
+    spawnWarpTransientStars(spawnCount, width, height);
+    updateWarpTransientStars(dt, width, height);
+  } else if (warpTransientStars.length) {
+    const width = cachedCanvasWidth || canvas.clientWidth;
+    const height = cachedCanvasHeight || canvas.clientHeight;
+    updateWarpTransientStars(dt, width, height);
+  }
+
+  // ── 4) Ende / Finalisierung ────────────────────────────────────────
+  if (warpElapsed >= total) {
     stageHue = warpTargetStageHue;
     stageIntensity = warpTargetStageIntensity;
     stageBrightness = warpTargetStageBrightness;
@@ -1520,8 +1756,11 @@ function tickWarp(dt) {
     stageIntensityInput.value = String(Math.round(stageIntensity * 100));
     stageBrightnessInput.value = String(Math.round(stageBrightness * 100));
 
+    warpTransientStars.length = 0;
+
     updateStageIntensity();
     updateStageBrightness();
+
     stageHueVal.textContent = `${Math.round(stageHue)}°`;
     stageIntensityVal.textContent = `${stageIntensity.toFixed(2)}×`;
     stageBrightnessVal.textContent = `${stageBrightness.toFixed(2)}×`;
@@ -1560,16 +1799,15 @@ function tickWarp(dt) {
     warpSphereOffsetY = 0;
     warpDriftDirX = 0;
     warpDriftDirY = 0;
+    warpElapsed = 0;
 
     if (warpCounterRotateWasActive) {
-      starfieldRotation = multiplyMatrices(viewRotation, viewRotation);
+      starfieldRotation = multiplyMatrices(viewRotation, starViewRotation);
     } else {
       starViewRotation = viewRotation;
     }
 
-    if (warpStarIdx >= 0 && warpStarIdx < stars.length) {
-      stars.splice(warpStarIdx, 1);
-    }
+    buildStars();
 
     counterRotateStars = warpCounterRotateWasActive;
     counterRotateStarsInput.checked = counterRotateStars;
@@ -1596,24 +1834,30 @@ function tickWarp(dt) {
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 
 function setUiVisible(v) {
-  if (overlay.classList.contains("visible")) {
+  const menuOpen = overlay.classList.contains("visible");
+
+  if (menuOpen) {
     stage.classList.remove("ui-hidden");
     openMenuBtn?.classList.add("hidden");
     return;
   }
 
-  stage.classList.toggle("ui-hidden", !v);
   openMenuBtn?.classList.toggle("hidden", !v);
+  customCursor?.classList.toggle("hidden", !v);
+  stage.classList.remove("ui-hidden");
+  overlay.classList.toggle("ui-faded", !v);
 }
 
 function openMenu() {
   overlay.classList.add("visible");
+  overlay.classList.remove("ui-faded");
   openMenuBtn?.classList.add("hidden");
   setUiVisible(true);
 }
 
 function closeMenu() {
   overlay.classList.remove("visible");
+  overlay.classList.remove("ui-faded");
   openMenuBtn?.classList.remove("hidden");
   setUiVisible(true);
 }
@@ -1690,6 +1934,8 @@ function resetView() {
   warpDriftDirY = 0;
   warpStartViewRotation = identityMatrix();
   warpTargetViewRotation = identityMatrix();
+  warpStartStarViewRotation = identityMatrix();
+  warpTargetStarViewRotation = identityMatrix();
   warpCounterRotateWasActive = false;
   ringEnabled = false;
   ringInnerRadius = 1.08;
