@@ -1591,13 +1591,7 @@ function startWarp(starIdx, flashX, flashY) {
 
   warpCounterRotateWasActive = counterRotateStars;
   warpStartStarViewRotation = orthonormalizeMatrix(currentStarViewRotation);
-
-  if (warpCounterRotateWasActive) {
-    warpStartViewRotation = orthonormalizeMatrix(currentStarViewRotation);
-    viewRotation = warpStartViewRotation;
-  } else {
-    warpStartViewRotation = orthonormalizeMatrix(viewRotation);
-  }
+  warpStartViewRotation = orthonormalizeMatrix(viewRotation);
 
   starViewRotation = warpStartStarViewRotation;
   counterRotateStars = false;
@@ -1636,10 +1630,10 @@ function startWarp(starIdx, flashX, flashY) {
 
   warpTargetRingEnabled = Math.random() < 0.5;
 
-  warpStartRingRotation = ringRotation;
+  warpStartRingRotation = orthonormalizeMatrix(ringRotation);
   warpTargetRingRotation = randomRotationMatrix();
 
-  warpSphereAlpha  = 1;
+  warpSphereAlpha = 1;
   starLabel.style.opacity = "0";
 
   warpStartStageHue = stageHue;
@@ -1663,10 +1657,12 @@ function startWarp(starIdx, flashX, flashY) {
   warpTargetStageLinearAngle = randInt(145, 225);
 
   const starDir = stars[starIdx]?.dir || [0, 0, 1];
-  warpTargetStarViewRotation = getViewRotationForStarCenter(starDir, warpStartStarViewRotation);
-  warpTargetViewRotation = warpTargetStarViewRotation;
+  warpTargetStarViewRotation = orthonormalizeMatrix(
+    getViewRotationForStarCenter(starDir, warpStartStarViewRotation)
+  );
+  warpTargetViewRotation = orthonormalizeMatrix(warpTargetStarViewRotation);
 
-  const centerX = (cachedCanvasWidth  || canvas.clientWidth)  * 0.5;
+  const centerX = (cachedCanvasWidth || canvas.clientWidth) * 0.5;
   const centerY = (cachedCanvasHeight || canvas.clientHeight) * 0.5;
   const dirX = flashX - centerX;
   const dirY = flashY - centerY;
@@ -1677,7 +1673,7 @@ function startWarp(starIdx, flashX, flashY) {
   warpSphereOffsetX = 0;
   warpSphereOffsetY = 0;
 
-  warpOverlay.style.setProperty("--wx", `${(flashX / (cachedCanvasWidth  || canvas.clientWidth))  * 100}%`);
+  warpOverlay.style.setProperty("--wx", `${(flashX / (cachedCanvasWidth || canvas.clientWidth)) * 100}%`);
   warpOverlay.style.setProperty("--wy", `${(flashY / (cachedCanvasHeight || canvas.clientHeight)) * 100}%`);
   warpOverlay.classList.add("flash");
   setTimeout(() => warpOverlay.classList.remove("flash"), 350);
