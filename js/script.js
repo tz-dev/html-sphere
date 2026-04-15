@@ -83,6 +83,9 @@ const sphereInfoGrid = document.getElementById("sphereInfoGrid");
 const stageBrightnessInput = document.getElementById("stageBrightness");
 const stageBrightnessVal = document.getElementById("stageBrightnessVal");
 
+const pixelationInput = document.getElementById("pixelation");
+const pixelationVal = document.getElementById("pixelationVal");
+
 // ─── Cached layout dimensions (updated on resize) ────────────────────────────
 let cachedCanvasWidth = 0;
 let cachedCanvasHeight = 0;
@@ -276,6 +279,12 @@ const warpTransientStarLifeMax = 1.35;
 const warpTransientStarSpawnRadiusMin = 40;
 const warpTransientStarSpawnRadiusMax = 220;
 const warpTransientStarFadeIn = 0.5;
+
+let pixelateEnabled = false;
+let pixelationStrength = 1;
+
+const pixelCanvas = document.createElement("canvas");
+const pixelCtx = pixelCanvas.getContext("2d");
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 
@@ -645,6 +654,37 @@ function syncRingInputs() {
   ringOuterRadiusInput.min = (inner + 0.05).toFixed(2);
 }
 
+function applyPixelation() {
+  if (!pixelateEnabled || pixelationStrength <= 1) return;
+
+  const displayWidth = cachedCanvasWidth || canvas.clientWidth;
+  const displayHeight = cachedCanvasHeight || canvas.clientHeight;
+
+  const sourceWidth = canvas.width;
+  const sourceHeight = canvas.height;
+
+  const block = Math.max(1, Math.round(pixelationStrength));
+  const dpr = window.devicePixelRatio || 1;
+
+  const scaledW = Math.max(1, Math.floor(sourceWidth / (block * dpr)));
+  const scaledH = Math.max(1, Math.floor(sourceHeight / (block * dpr)));
+
+  pixelCanvas.width = scaledW;
+  pixelCanvas.height = scaledH;
+
+  pixelCtx.setTransform(1, 0, 0, 1, 0, 0);
+  pixelCtx.clearRect(0, 0, scaledW, scaledH);
+  pixelCtx.imageSmoothingEnabled = true;
+  pixelCtx.drawImage(canvas, 0, 0, sourceWidth, sourceHeight, 0, 0, scaledW, scaledH);
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, sourceWidth, sourceHeight);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(pixelCanvas, 0, 0, scaledW, scaledH, 0, 0, sourceWidth, sourceHeight);
+  ctx.restore();
+}
+
 // ─── Quaternion helpers (for slerp) ───────────────────────────────────────────
 
 function matToQuat(m) {
@@ -990,6 +1030,10 @@ function updateLabels() {
   sceneBrightnessVal.textContent = `${sceneBrightness.toFixed(2)}×`;
   sceneContrastVal.textContent = `${sceneContrast.toFixed(2)}×`;
   updateSceneFilter();
+
+  pixelationStrength = Number(pixelationInput.value);
+  pixelateEnabled = pixelationStrength > 1;
+  pixelationVal.textContent = pixelationStrength <= 1 ? "off" : `${pixelationStrength}px`;
 
   speedVal.textContent = `${speedInput.value} °/s`;
   zoomVal.textContent = `${zoom.toFixed(2)}×`;
@@ -1571,6 +1615,9 @@ function render() {
   drawRing(false, warpSphereAlpha);
   drawSphere(warpSphereAlpha);
   drawRing(true, warpSphereAlpha);
+
+  applyPixelation();
+
   updateSphereInfoLabelContent();
   updateSphereInfoLabelPosition();
   drawCompass();
@@ -2034,6 +2081,10 @@ function resetView() {
   showInfoLabel = showInfoLabelInput.checked;
   currentSphereLabelId = "SPHERE-001";
   currentLabelPosition = "right";
+
+  pixelationInput.value = "1";
+  pixelationStrength = 1;
+  pixelateEnabled = false;
 
   syncRingInputs();
   updateLabels();
@@ -2542,6 +2593,14 @@ ringInnerRadiusInput.addEventListener("input", () => {
 
 ringOuterRadiusInput.addEventListener("input", () => {
   syncRingInputs();
+  updateOverlayVisibility();
+  render();
+});
+
+pixelationInput.addEventListener("input", () => {
+  pixelationStrength = Number(pixelationInput.value);
+  pixelateEnabled = pixelationStrength > 1;
+  updateLabels();
   updateOverlayVisibility();
   render();
 });
