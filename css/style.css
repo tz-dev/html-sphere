@@ -307,7 +307,7 @@ body {
   position: absolute;
   top: 20px;
   right: 20px;
-  width: min(675px, calc(100vw - 40px));
+  width: min(668px, calc(100vw - 40px));
   max-height: calc(100vh - 40px);
   overflow: auto;
   padding: 18px 18px 16px;
@@ -434,12 +434,12 @@ button {
 }
 
 .control {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .control-inline {
   display: grid;
-  grid-template-columns: 110px 1fr 84px;
+  grid-template-columns: 110px 1fr 58px;
   align-items: center;
   gap: 12px;
   height: 20px;
@@ -451,7 +451,7 @@ button {
 }
 
 .control-inline .value {
-  min-width: 84px;
+  min-width: 58px;
   text-align: right;
 }
 
