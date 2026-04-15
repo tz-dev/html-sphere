@@ -1348,6 +1348,7 @@ function drawRing(isFront, alpha = 1) {
 
 function drawSphere(alpha) {
   if (alpha < 0.005) return;
+
   const width  = cachedCanvasWidth  || canvas.clientWidth;
   const height = cachedCanvasHeight || canvas.clientHeight;
   const baseCx = width * 0.5;
@@ -1355,7 +1356,9 @@ function drawSphere(alpha) {
   const cx = baseCx + warpSphereOffsetX;
   const cy = baseCy + warpSphereOffsetY;
   const radius = Math.min(width, height) * 0.23 * zoom * sphereRadiusScale;
+
   sphereScreen = { cx, cy, radius };
+
   const c = hslColors(sphereHue);
   const visualRadius = showGlow && sphereGlowAmount > 0.02
     ? radius * (1.45 + sphereGlowAmount * 0.55)
@@ -1370,12 +1373,24 @@ function drawSphere(alpha) {
     return;
   }
 
+  const lightVec = normalizeVector(transformSpherePoint([-0.65, 0.75, 0.9]));
+  const shadeVec = normalizeVector(transformSpherePoint([0.55, -0.35, -0.9]));
+
+  const hx = cx + lightVec[0] * radius * 0.34;
+  const hy = cy - lightVec[1] * radius * 0.34;
+
+  const sx = cx + shadeVec[0] * radius * 0.30;
+  const sy = cy - shadeVec[1] * radius * 0.30;
+
   ctx.globalAlpha = alpha;
 
   if (showGlow && sphereGlowAmount > 0.02) {
     const gr = radius * (1.45 + sphereGlowAmount * 0.55);
 
-    const glow = ctx.createRadialGradient(cx, cy, radius * 0.28, cx, cy, gr);
+    const glow = ctx.createRadialGradient(
+      cx, cy, radius * 0.28,
+      cx, cy, gr
+    );
     glow.addColorStop(0, `hsla(${sphereHue}, 85%, 70%, ${0.10 * sphereGlowAmount})`);
     glow.addColorStop(0.45, `hsla(${sphereHue}, 70%, 55%, ${0.05 * sphereGlowAmount})`);
     glow.addColorStop(1, "rgba(0, 0, 0, 0)");
@@ -1386,51 +1401,80 @@ function drawSphere(alpha) {
     ctx.fill();
   }
 
-  const shell = ctx.createRadialGradient(cx - radius * 0.36, cy - radius * 0.42, radius * 0.06, cx, cy, radius * 1.08);
+  const shell = ctx.createRadialGradient(
+    hx, hy, radius * 0.06,
+    cx, cy, radius * 1.08
+  );
   shell.addColorStop(0,    c.high);
   shell.addColorStop(0.12, c.mid1);
   shell.addColorStop(0.28, c.mid2);
   shell.addColorStop(0.58, c.mid3);
   shell.addColorStop(0.82, c.low1);
   shell.addColorStop(1,    c.deep);
-  ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fillStyle = shell; ctx.fill();
 
-  ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.clip();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = shell;
+  ctx.fill();
 
-  const lonCount = getLonCount(), latCount = getLatCount();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.clip();
+
+  const lonCount = getLonCount();
+  const latCount = getLatCount();
+
   for (let i = 0; i < lonCount; i++) {
     const angle = (i / Math.max(1, lonCount)) * Math.PI;
     drawSeamCircle([Math.cos(angle), 0, Math.sin(angle)], 0, radius, cx, cy, c);
   }
+
   for (let i = 1; i <= latCount; i++) {
     const phi = -Math.PI / 2 + (i * Math.PI) / (latCount + 1);
     drawSeamCircle([0, 1, 0], Math.sin(phi), radius, cx, cy, c);
   }
 
-  const scan = ctx.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
-  scan.addColorStop(0,    "rgba(255, 200, 110, 0.08)");
+  const scan = ctx.createLinearGradient(
+    hx - radius * 0.9, hy - radius * 0.9,
+    sx + radius * 0.9, sy + radius * 0.9
+  );
+  scan.addColorStop(0,    "rgba(255, 200, 110, 0.06)");
   scan.addColorStop(0.35, "rgba(255, 255, 255, 0.00)");
-  scan.addColorStop(0.65, "rgba(120, 220, 255, 0.06)");
+  scan.addColorStop(0.65, "rgba(120, 220, 255, 0.05)");
   scan.addColorStop(1,    "rgba(255, 255, 255, 0.00)");
-  ctx.fillStyle = scan; ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  ctx.fillStyle = scan;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
 
-  const light = ctx.createRadialGradient(cx - radius * 0.44, cy - radius * 0.48, radius * 0.04, cx - radius * 0.12, cy - radius * 0.14, radius * 1.1);
-  light.addColorStop(0,   "rgba(255, 255, 255, 0.34)");
-  light.addColorStop(0.2, "rgba(200, 245, 255, 0.15)");
-  light.addColorStop(0.5, "rgba(140, 220, 255, 0.04)");
+  const light = ctx.createRadialGradient(
+    hx - radius * 0.10, hy - radius * 0.10, radius * 0.04,
+    hx, hy, radius * 1.05
+  );
+  light.addColorStop(0,   "rgba(255, 255, 255, 0.24)");
+  light.addColorStop(0.2, "rgba(200, 245, 255, 0.10)");
+  light.addColorStop(0.5, "rgba(140, 220, 255, 0.025)");
   light.addColorStop(1,   "rgba(255, 255, 255, 0)");
-  ctx.fillStyle = light; ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  ctx.fillStyle = light;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
 
-  const edgeShade = ctx.createRadialGradient(cx + radius * 0.35, cy + radius * 0.42, radius * 0.1, cx, cy, radius * 1.25);
-  edgeShade.addColorStop(0,    "rgba(0, 0, 0, 0.02)");
-  edgeShade.addColorStop(0.64, "rgba(0, 0, 0, 0.14)");
-  edgeShade.addColorStop(1,    "rgba(0, 0, 0, 0.44)");
-  ctx.fillStyle = edgeShade; ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  const edgeShade = ctx.createRadialGradient(
+    sx, sy, radius * 0.08,
+    cx, cy, radius * 1.22
+  );
+  edgeShade.addColorStop(0,    "rgba(0, 0, 0, 0.01)");
+  edgeShade.addColorStop(0.64, "rgba(0, 0, 0, 0.10)");
+  edgeShade.addColorStop(1,    "rgba(0, 0, 0, 0.28)");
+  ctx.fillStyle = edgeShade;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
 
   ctx.restore();
 
-  ctx.strokeStyle = c.rim; ctx.lineWidth = radius * 0.01;
-  ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = c.rim;
+  ctx.lineWidth = radius * 0.01;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
   ctx.globalAlpha = 1;
 }
 
