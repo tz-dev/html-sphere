@@ -352,6 +352,28 @@ function transposeMatrix(m) {
   ];
 }
 
+function orthonormalizeMatrix(m) {
+  let x = [m[0][0], m[1][0], m[2][0]];
+  let y = [m[0][1], m[1][1], m[2][1]];
+
+  x = normalizeVector(x);
+
+  const dotXY = x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+  y = subtractVectors(y, scaleVector(x, dotXY));
+  y = normalizeVector(y);
+
+  let z = cross(x, y);
+  z = normalizeVector(z);
+
+  y = normalizeVector(cross(z, x));
+
+  return [
+    [x[0], y[0], z[0]],
+    [x[1], y[1], z[1]],
+    [x[2], y[2], z[2]],
+  ];
+}
+
 function rotationMatrixFromAxisAngle(axis, angle) {
   const [x, y, z] = normalizeVector(axis);
   if (Math.hypot(x, y, z) < 1e-10 || Math.abs(angle) < 1e-10) return identityMatrix();
@@ -366,7 +388,13 @@ function rotationMatrixFromAxisAngle(axis, angle) {
 function applyAngularVelocity(r, omega, dt) {
   const mag = lengthVector(omega);
   if (mag < 1e-10) return r;
-  return multiplyMatrices(rotationMatrixFromAxisAngle(scaleVector(omega, 1 / mag), mag * dt), r);
+
+  return orthonormalizeMatrix(
+    multiplyMatrices(
+      rotationMatrixFromAxisAngle(scaleVector(omega, 1 / mag), mag * dt),
+      r
+    )
+  );
 }
 
 function randomRotationMatrix() {
@@ -680,18 +708,20 @@ function getViewRotationForStarCenter(starDir, currentViewRotation) {
 
   if (axisLen < 1e-8) {
     if (dotVal > 0.9999) {
-      return currentViewRotation;
+      return orthonormalizeMatrix(currentViewRotation);
     }
     const fallbackAxis = Math.abs(currentDir[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
-    return multiplyMatrices(
-      rotationMatrixFromAxisAngle(fallbackAxis, Math.PI),
-      currentViewRotation
+    return orthonormalizeMatrix(
+      multiplyMatrices(
+        rotationMatrixFromAxisAngle(fallbackAxis, Math.PI),
+        currentViewRotation
+      )
     );
   }
 
   const angle = Math.acos(dotVal);
   const align = rotationMatrixFromAxisAngle(scaleVector(axis, 1 / axisLen), angle);
-  return multiplyMatrices(align, currentViewRotation);
+  return orthonormalizeMatrix(multiplyMatrices(align, currentViewRotation));
 }
 
 function getCurrentStarViewRotation() {
@@ -1560,9 +1590,16 @@ function startWarp(starIdx, flashX, flashY) {
   warpTransientStars.length = 0;
 
   warpCounterRotateWasActive = counterRotateStars;
-  warpStartViewRotation = viewRotation;
-  warpStartStarViewRotation = currentStarViewRotation;
-  starViewRotation = currentStarViewRotation;
+  warpStartStarViewRotation = orthonormalizeMatrix(currentStarViewRotation);
+
+  if (warpCounterRotateWasActive) {
+    warpStartViewRotation = orthonormalizeMatrix(currentStarViewRotation);
+    viewRotation = warpStartViewRotation;
+  } else {
+    warpStartViewRotation = orthonormalizeMatrix(viewRotation);
+  }
+
+  starViewRotation = warpStartStarViewRotation;
   counterRotateStars = false;
 
   warpStarIdx = starIdx;
@@ -1678,12 +1715,12 @@ function tickWarp(dt) {
   // ── 1) Ziel zentrieren ─────────────────────────────────────────────
   const q1 = matToQuat(warpStartViewRotation);
   const q2 = matToQuat(warpTargetViewRotation);
-  viewRotation = quatToMat(slerpQuat(q1, q2, centerT));
+  viewRotation = orthonormalizeMatrix(quatToMat(slerpQuat(q1, q2, centerT)));
 
   if (warpCounterRotateWasActive) {
     const starQ1 = matToQuat(warpStartStarViewRotation);
     const starQ2 = matToQuat(warpTargetStarViewRotation);
-    starViewRotation = quatToMat(slerpQuat(starQ1, starQ2, centerT));
+    starViewRotation = orthonormalizeMatrix(quatToMat(slerpQuat(starQ1, starQ2, centerT)));
   } else {
     starViewRotation = viewRotation;
   }
@@ -1751,7 +1788,7 @@ function tickWarp(dt) {
 
   const ringQ1 = matToQuat(warpStartRingRotation);
   const ringQ2 = matToQuat(warpTargetRingRotation);
-  ringRotation = quatToMat(slerpQuat(ringQ1, ringQ2, zoomT));
+  ringRotation = orthonormalizeMatrix(quatToMat(slerpQuat(ringQ1, ringQ2, zoomT)));
 
   // ── 3) Exit-Drift / Fade ────────────────────────────────────────────
   const driftDistance = Math.max(
@@ -1844,11 +1881,16 @@ function tickWarp(dt) {
     warpDriftDirX = 0;
     warpDriftDirY = 0;
     warpElapsed = 0;
+    warpTransientStars.length = 0;
 
     if (warpCounterRotateWasActive) {
-      starfieldRotation = multiplyMatrices(viewRotation, starViewRotation);
+      starViewRotation = orthonormalizeMatrix(starViewRotation);
+      viewRotation = orthonormalizeMatrix(viewRotation);
+      starfieldRotation = orthonormalizeMatrix(
+        multiplyMatrices(viewRotation, starViewRotation)
+      );
     } else {
-      starViewRotation = viewRotation;
+      starViewRotation = orthonormalizeMatrix(viewRotation);
     }
 
     buildStars();
@@ -2208,15 +2250,17 @@ function onPointerMove(e) {
     const yaw   = -nx * Math.PI * 1.8;
     const pitch =  ny * Math.PI * 1.8;
     const vi    = transposeMatrix(viewRotation);
-    sphereRotation = multiplyMatrices(rotationMatrixFromAxisAngle(multiplyMatrixVector(vi, [0, 1, 0]), yaw),   sphereRotation);
-    sphereRotation = multiplyMatrices(rotationMatrixFromAxisAngle(multiplyMatrixVector(vi, [1, 0, 0]), pitch),  sphereRotation);
+    sphereRotation = multiplyMatrices(rotationMatrixFromAxisAngle(multiplyMatrixVector(vi, [0, 1, 0]), yaw), sphereRotation);
+    sphereRotation = multiplyMatrices(rotationMatrixFromAxisAngle(multiplyMatrixVector(vi, [1, 0, 0]), pitch), sphereRotation);
+    sphereRotation = orthonormalizeMatrix(sphereRotation);
     const dtA = 1 / 60;
     sphereAngularVelocity = [pitch / dtA, yaw / dtA, 0];
   } else if (dragMode === "view") {
     const yaw   = -nx * Math.PI * 1.6;
     const pitch =  ny * Math.PI * 1.6;
-    viewRotation = multiplyMatrices(rotationMatrixFromAxisAngle([0, 1, 0], yaw),   viewRotation);
-    viewRotation = multiplyMatrices(rotationMatrixFromAxisAngle([1, 0, 0], pitch),  viewRotation);
+    viewRotation = multiplyMatrices(rotationMatrixFromAxisAngle([0, 1, 0], yaw), viewRotation);
+    viewRotation = multiplyMatrices(rotationMatrixFromAxisAngle([1, 0, 0], pitch), viewRotation);
+    viewRotation = orthonormalizeMatrix(viewRotation);
 
     if (!counterRotateStars) {
       starViewRotation = viewRotation;
@@ -2374,11 +2418,13 @@ showGlowInput.addEventListener("change",    () => { showGlow     = showGlowInput
 showStarGlowInput.addEventListener("change",() => { showStarGlow = showStarGlowInput.checked;     updateOverlayVisibility(); render(); });
 
 counterRotateStarsInput.addEventListener("change", () => {
-  const currentStarViewRotation = getCurrentStarViewRotation();
+  const currentStarViewRotation = orthonormalizeMatrix(getCurrentStarViewRotation());
   const nextState = counterRotateStarsInput.checked;
 
   if (nextState) {
-    starfieldRotation = multiplyMatrices(viewRotation, currentStarViewRotation);
+    starfieldRotation = orthonormalizeMatrix(
+      multiplyMatrices(orthonormalizeMatrix(viewRotation), currentStarViewRotation)
+    );
   } else {
     starViewRotation = currentStarViewRotation;
   }
