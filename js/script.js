@@ -799,22 +799,36 @@ function starScreenPos(star, width, height) {
   const viewForStars = useCounterRotate
     ? multiplyMatrices(transposeMatrix(viewRotation), starfieldRotation)
     : starViewRotation;
-  const d = star.dir, dist = star.distance;
-  const wx = d[0]*dist, wy = d[1]*dist, wz = d[2]*dist;
-  const m = viewForStars;
-  const rx = m[0][0]*wx + m[0][1]*wy + m[0][2]*wz;
-  const ry = m[1][0]*wx + m[1][1]*wy + m[1][2]*wz;
-  const rz = m[2][0]*wx + m[2][1]*wy + m[2][2]*wz;
-  if (rz < -0.6) return null;
-  const camera = 10, perspective = camera / (camera - rz);
-  const starZoom = 0.82 + zoom * 0.18;
-  const starScaleX = width * 0.26;
-  const starScaleY = height * 0.22;
 
-  const x = width * 0.5 + rx * starScaleX * perspective * starZoom * starFieldMotionFactor;
-  const y = height * 0.5 - ry * starScaleY * perspective * starZoom * starFieldMotionFactor;
+  const d = star.dir, dist = star.distance;
+  const wx = d[0] * dist, wy = d[1] * dist, wz = d[2] * dist;
+  const m = viewForStars;
+  const rx = m[0][0] * wx + m[0][1] * wy + m[0][2] * wz;
+  const ry = m[1][0] * wx + m[1][1] * wy + m[1][2] * wz;
+  const rz = m[2][0] * wx + m[2][1] * wy + m[2][2] * wz;
+
+  if (rz < -0.6) return null;
+
+  const camera = 10;
+  const perspective = camera / (camera - rz);
+  const starZoom = 0.82 + zoom * 0.18;
+
+  const baseScale = Math.min(width, height) * 0.35;
+  const aspect = width / Math.max(1, height);
+  const stretchX = Math.pow(aspect, 0.36);
+  const stretchY = Math.pow(1 / aspect, 0.16);
+
+  const x = width * 0.5 + rx * baseScale * stretchX * perspective * starZoom * starFieldMotionFactor;
+  const y = height * 0.5 - ry * baseScale * stretchY * perspective * starZoom * starFieldMotionFactor;
+
   if (x < -20 || x > width + 20 || y < -20 || y > height + 20) return null;
-  return { x, y, r: star.radius * perspective * (0.9 + zoom * 0.12), rotated: [rx, ry, rz] };
+
+  return {
+    x,
+    y,
+    r: star.radius * perspective * (0.9 + zoom * 0.12),
+    rotated: [rx, ry, rz]
+  };
 }
 
 function findStarNear(mx, my) {
@@ -1183,6 +1197,20 @@ function drawWarpTransientStars() {
     const fadeOutT = clamp(s.life * 1.6, 0, 1);
     const a = clamp(s.alpha * fadeInT * fadeOutT, 0, 1);
 
+    if (showStarGlow && starGlowAmount > 0) {
+      const glowR = s.r * (3.2 + starGlowAmount * 2.4);
+      const glowA = a * (0.18 + starGlowAmount * 0.12);
+
+      const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowR);
+      glow.addColorStop(0, `rgba(210, 235, 255, ${glowA})`);
+      glow.addColorStop(1, `rgba(210, 235, 255, 0)`);
+
+      ctx.beginPath();
+      ctx.fillStyle = glow;
+      ctx.arc(s.x, s.y, glowR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.beginPath();
     ctx.fillStyle = `rgba(210, 235, 255, ${a})`;
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
@@ -1211,11 +1239,18 @@ function drawBackground(width, height) {
     const rz = m[2][0]*wx + m[2][1]*wy + m[2][2]*wz;
     if (rz < -0.6) continue;
 
-    const camera      = 10;
+    const camera = 10;
     const perspective = camera / (camera - rz);
-    const starZoom    = 0.82 + zoom * 0.18;
-    const starScaleX  = width * 0.26 * perspective * starZoom * starFieldMotionFactor;
-    const starScaleY  = height * 0.22 * perspective * starZoom * starFieldMotionFactor;
+    const starZoom = 0.82 + zoom * 0.18;
+
+    const baseScale = Math.min(width, height) * 0.35;
+    const aspect = width / Math.max(1, height);
+    const stretchX = Math.pow(aspect, 0.36);
+    const stretchY = Math.pow(1 / aspect, 0.16);
+
+    const starScaleX = baseScale * stretchX * perspective * starZoom * starFieldMotionFactor;
+    const starScaleY = baseScale * stretchY * perspective * starZoom * starFieldMotionFactor;
+
     let x = cx + rx * starScaleX;
     let y = cy - ry * starScaleY;
 
@@ -2157,7 +2192,12 @@ function updateSphereInfoLabelPosition() {
 
   sphereInfoLabel.className = "sphere-info-label";
 
-  switch (currentLabelPosition) {
+  const effectiveLabelPosition =
+    overlay.classList.contains("visible") && currentLabelPosition === "right"
+      ? "left"
+      : currentLabelPosition;
+
+  switch (effectiveLabelPosition) {
     case "left":
       x = cx - distance;
       y = cy;
