@@ -90,6 +90,9 @@ const stageBrightnessVal = document.getElementById("stageBrightnessVal");
 const pixelationInput = document.getElementById("pixelation");
 const pixelationVal = document.getElementById("pixelationVal");
 
+const playPauseOverlay = document.getElementById("playPauseOverlay");
+const playPauseIcon = document.getElementById("playPauseIcon");
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const minZoom = 0.15;
@@ -2040,6 +2043,23 @@ function updateFullscreenButtonState() {
   fullscreenBtn.classList.toggle("active", isFullscreen);
 }
 
+let playPauseOverlayTimer = null;
+
+function showPlayPauseOverlay(isPaused) {
+  if (!playPauseOverlay || !playPauseIcon) return;
+
+  playPauseIcon.textContent = isPaused ? "⏸" : "▶";
+
+  playPauseOverlay.classList.remove("fade-out");
+  playPauseOverlay.classList.add("visible");
+
+  clearTimeout(playPauseOverlayTimer);
+  playPauseOverlayTimer = setTimeout(() => {
+    playPauseOverlay.classList.add("fade-out");
+    playPauseOverlay.classList.remove("visible");
+  }, 700);
+}
+
 // ─── Sphere info label ────────────────────────────────────────────────────────
 
 function formatVec(v) {
@@ -2328,7 +2348,9 @@ hueInput.addEventListener("input", () => {
 pauseBtn.addEventListener("click", () => {
   paused = !paused;
   pauseBtn.textContent = paused ? "Resume" : "Pause";
+  showPlayPauseOverlay(paused);
   updateOverlayVisibility();
+  render();
 });
 
 resetSphereBtn.addEventListener("click", () => { resetSphereOrientation(); updateOverlayVisibility(); });
@@ -2413,11 +2435,22 @@ window.addEventListener("pointermove", (e) => {
 }, { passive: true });
 window.addEventListener("keydown", (event) => {
   updateOverlayVisibility();
+
+  const tag = document.activeElement?.tagName;
+  const isTyping = tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
+
+  if (event.code === "Space" && !isTyping) {
+    event.preventDefault();
+    paused = !paused;
+    pauseBtn.textContent = paused ? "Resume" : "Pause";
+    showPlayPauseOverlay(paused);
+    render();
+  }
+
   if (event.key === "F11") {
     setTimeout(() => { updateFullscreenButtonState(); resizeCanvas(); render(); }, 100);
   }
 });
-
 openMenuBtn.addEventListener("click",  () => { openMenu();  updateOverlayVisibility(); });
 closeMenuBtn.addEventListener("click", () => { closeMenu(); updateOverlayVisibility(); });
 
