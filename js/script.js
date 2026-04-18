@@ -1050,7 +1050,6 @@ function drawBackground(width, height) {
     ? multiplyMatrices(transposeMatrix(viewRotation), starfieldRotation)
     : starViewRotation;
 
-  // Pre-compute shared constants outside the loop
   const camera = 10;
   const starZoom = 0.82 + zoom * 0.18;
   const baseScale = Math.min(width, height) * 0.35;
@@ -1059,7 +1058,7 @@ function drawBackground(width, height) {
   const stretchY = Math.pow(1 / aspect, 0.16);
   const m = viewForStars;
 
-  const scatterStart    = WARP_CONFIG.timing.select + WARP_CONFIG.timing.center;
+  const scatterStart = WARP_CONFIG.timing.select + WARP_CONFIG.timing.center;
   const scatterDuration = WARP_CONFIG.timing.zoom + WARP_CONFIG.timing.exit;
 
   let scatterT = 0;
@@ -1069,17 +1068,17 @@ function drawBackground(width, height) {
   }
 
   const maxDim = Math.max(width, height);
+  let deferredWarpTarget = null;
 
   for (let i = 0; i < stars.length; i++) {
     const star = stars[i];
     const d = star.dir;
     const dist = star.distance;
 
-    // Inline matrix-vector multiply to avoid per-star allocation
     const wx = d[0] * dist, wy = d[1] * dist, wz = d[2] * dist;
-    const rx = m[0][0]*wx + m[0][1]*wy + m[0][2]*wz;
-    const ry = m[1][0]*wx + m[1][1]*wy + m[1][2]*wz;
-    const rz = m[2][0]*wx + m[2][1]*wy + m[2][2]*wz;
+    const rx = m[0][0] * wx + m[0][1] * wy + m[0][2] * wz;
+    const ry = m[1][0] * wx + m[1][1] * wy + m[1][2] * wz;
+    const rz = m[2][0] * wx + m[2][1] * wy + m[2][2] * wz;
     if (rz < -0.6) continue;
 
     const perspective = camera / (camera - rz);
@@ -1089,8 +1088,10 @@ function drawBackground(width, height) {
     let x = cx + rx * starScaleX;
     let y = cy - ry * starScaleY;
 
-    // Scatter non-target stars outward during the warp zoom/exit phase
-    if (warpActive && i !== warpStarIdx && scatterT > 0) {
+    const isHovered = i === hoveredStarIdx && !warpActive;
+    const isWarpTarget = i === warpStarIdx;
+
+    if (warpActive && !isWarpTarget && scatterT > 0) {
       const dxFromCenter = x - cx;
       const dyFromCenter = y - cy;
       const distFromCenter = Math.hypot(dxFromCenter, dyFromCenter) || 1;
@@ -1099,42 +1100,41 @@ function drawBackground(width, height) {
       y += (dyFromCenter / distFromCenter) * scatterDistance;
     }
 
-    if (x < -40 || x > width + 40 || y < -40 || y > height + 40) continue;
+    const clipPad = isWarpTarget ? 220 : 40;
+    if (x < -clipPad || x > width + clipPad || y < -clipPad || y > height + clipPad) continue;
+
+    if (isWarpTarget) {
+      deferredWarpTarget = { star, perspective, x, y };
+      continue;
+    }
 
     const rgb = star._rgbStr;
     const sr = star.radius * perspective * (0.9 + zoom * 0.12);
-    const isHovered    = i === hoveredStarIdx && !warpActive;
-    const isWarpTarget = i === warpStarIdx;
 
     let alphaScale = 1;
     if (warpActive) {
-      alphaScale = isWarpTarget
-        ? 1 + easeInQuint(warpProgress) * 2
-        : Math.max(0, 1 - easeInOutCubic(warpProgress) * 0.7);
+      alphaScale = Math.max(0, 1 - easeInOutCubic(warpProgress) * 0.7);
     }
 
-    if (showStarGlow && starGlowAmount > 0 && (star.alpha > 0.3 || isHovered || isWarpTarget)) {
-      const baseGlowR = isHovered || isWarpTarget ? sr * 7 : sr * 4;
+    if (showStarGlow && starGlowAmount > 0 && (star.alpha > 0.3 || isHovered)) {
+      const baseGlowR = isHovered ? sr * 7 : sr * 4;
       const glowR = baseGlowR * (0.45 + starGlowAmount * 0.55);
       const glowA =
         (isHovered ? star.alpha * 0.55 : star.alpha * 0.35) *
         starGlowAmount *
         (star.brightness ?? 1);
-      const pulseR = isWarpTarget ? glowR * (1 + easeInQuint(warpProgress) * 3) : glowR;
 
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, pulseR);
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, glowR);
       glow.addColorStop(0, `rgba(${rgb}, ${glowA * alphaScale})`);
       glow.addColorStop(1, `rgba(${rgb}, 0)`);
 
       ctx.beginPath();
       ctx.fillStyle = glow;
-      ctx.arc(x, y, pulseR, 0, Math.PI * 2);
+      ctx.arc(x, y, glowR, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    const drawR = isHovered
-      ? sr * 2
-      : isWarpTarget ? sr * (1 + easeInQuint(warpProgress) * 4) : sr;
+    const drawR = isHovered ? sr * 2 : sr;
 
     ctx.beginPath();
     const baseAlpha = Math.min(1, star.alpha * alphaScale * (star.brightness ?? 1));
@@ -1142,13 +1142,49 @@ function drawBackground(width, height) {
     ctx.arc(x, y, drawR, 0, Math.PI * 2);
     ctx.fill();
 
-    if (isHovered && !warpActive) {
+    if (isHovered) {
       ctx.beginPath();
       ctx.strokeStyle = `rgba(${rgb}, 0.6)`;
-      ctx.lineWidth   = 0.8;
+      ctx.lineWidth = 0.8;
       ctx.arc(x, y, sr * 4, 0, Math.PI * 2);
       ctx.stroke();
     }
+  }
+
+  if (deferredWarpTarget) {
+    const { star, perspective, x, y } = deferredWarpTarget;
+
+    const rgb = star._rgbStr;
+    const sr = star.radius * perspective * (0.9 + zoom * 0.12);
+
+    const targetAlphaScale = warpActive
+      ? Math.max(1, 1 + easeInQuint(Math.min(warpProgress, 0.92)) * 2.8)
+      : 1;
+
+    const pulse = warpActive
+      ? 1 + easeInQuint(Math.min(warpProgress, 0.94)) * 5.5
+      : 1;
+
+    const drawR = sr * pulse;
+
+    if (showStarGlow && starGlowAmount > 0) {
+      const glowR = sr * (8 + pulse * 2.5) * (0.45 + starGlowAmount * 0.55);
+      const glowA = Math.min(1, star.alpha * 0.85 * starGlowAmount * targetAlphaScale);
+
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, glowR);
+      glow.addColorStop(0, `rgba(${rgb}, ${glowA})`);
+      glow.addColorStop(1, `rgba(${rgb}, 0)`);
+
+      ctx.beginPath();
+      ctx.fillStyle = glow;
+      ctx.arc(x, y, glowR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(${rgb}, ${Math.min(1, star.alpha * targetAlphaScale)})`;
+    ctx.arc(x, y, drawR, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -1783,8 +1819,6 @@ function tickWarp(dt) {
   const nextStarGlow = lerp(warpStartStarGlow, warpTargetStarGlow, zoomT);
   const nextStarBrightness = lerp(warpStartStarBrightness, warpTargetStarBrightness, zoomT);
 
-  const prevStarDensity = clamp(Number(starDensityInput.value) / 100, 0.25, 8);
-
   starDensityInput.value = String(Math.round(nextStarDensity * 100));
   starGlowAmountInput.value = String(Math.round(nextStarGlow * 100));
   starBrightnessInput.value = String(Math.round(nextStarBrightness * 100));
@@ -1792,12 +1826,7 @@ function tickWarp(dt) {
   starGlowAmount = nextStarGlow;
   starBrightness = nextStarBrightness;
 
-  // Nur neu bauen, wenn sich die Density sichtbar geändert hat
-  if (Math.abs(nextStarDensity - prevStarDensity) > 0.08) {
-    buildStars();
-  } else {
-    cacheStarColors();
-  }
+  cacheStarColors();
 
   sphereRadiusScale = lerp(warpStartRadiusScale, warpTargetRadiusScale, zoomT);
   syncInputFromSphereRadius();
