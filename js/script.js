@@ -1265,7 +1265,6 @@ function drawWarpTransientStars() {
     const dirX = speed > 0.0001 ? s.vx / speed : 0;
     const dirY = speed > 0.0001 ? s.vy / speed : 0;
 
-    // Streifenlänge wächst mit Geschwindigkeit und leicht mit dem Alter
     const trailLen =
       clamp(speed * 0.05, 18, 140) *
       lerp(0.55, 1.15, fadeInT);
@@ -1273,7 +1272,6 @@ function drawWarpTransientStars() {
     const tailX = s.x - dirX * trailLen;
     const tailY = s.y - dirY * trailLen;
 
-    // feiner Leucht-Schweif
     const trail = ctx.createLinearGradient(s.x, s.y, tailX, tailY);
     trail.addColorStop(0.0, `rgba(235, 245, 255, ${a * 0.95})`);
     trail.addColorStop(0.18, `rgba(210, 235, 255, ${a * 0.55})`);
@@ -1287,7 +1285,6 @@ function drawWarpTransientStars() {
     ctx.lineTo(tailX, tailY);
     ctx.stroke();
 
-    // optionaler weicher Glow um den Streifenkopf
     if (showStarGlow && starGlowAmount > 0) {
       const glowR = s.r * (4.0 + starGlowAmount * 2.8);
       const glowA = a * (0.18 + starGlowAmount * 0.14);
@@ -1302,7 +1299,6 @@ function drawWarpTransientStars() {
       ctx.fill();
     }
 
-    // heller Kern vorne
     ctx.beginPath();
     ctx.fillStyle = `rgba(245, 250, 255, ${Math.min(1, a * 1.1)})`;
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
@@ -2655,4 +2651,3 @@ updateFullscreenButtonState();
 setControlsDisabled(autoWarp);
 updateCustomCursor();
 requestAnimationFrame(animate);
- 
