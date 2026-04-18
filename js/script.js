@@ -2472,7 +2472,7 @@ canvas.addEventListener("pointercancel", endDrag);
 canvas.addEventListener("pointerleave", endDrag);
 canvas.addEventListener("wheel",        onWheel, { passive: false });
 canvas.addEventListener("dblclick",     onDoubleClick);
-canvas.addEventListener("contextmenu",  e => e.preventDefault());
+document.addEventListener("contextmenu", e => e.preventDefault());
 canvas.addEventListener("mousedown",    e => { if (e.button === 1) e.preventDefault(); });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
