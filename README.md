@@ -26,7 +26,7 @@ Additional visual effects such as sphere glow and star glow can be enabled indiv
 
 The background is controlled independently through dedicated hue, intensity, and brightness settings, so the stage can be tuned without affecting the sphere or the stars rendered on the canvas. An optional pixelation post-process can also be used to give the whole canvas a more stylized low-resolution look.
 
-Warp transitions add movement and variation to the experience. During a warp, the selected star is smoothly centered toward the canvas midpoint, the sphere drifts across the scene, and several scene parameters can be randomized. These include sphere hue, axis weighting, speed, sphere brightness, contrast, sphere radius, ring configuration, and background hue, intensity, and brightness. Background slider values animate during the warp, so the UI always reflects the live scene state.
+Warp transitions add movement and variation to the experience. During a warp, the selected star is smoothly centered toward the canvas midpoint, the sphere drifts across the scene, and several scene parameters can be randomized. These include sphere hue, axis weighting, speed, sphere brightness, contrast, sphere radius, ring configuration, and background hue, intensity, brightness and star settings. Background slider values animate during the warp, so the UI always reflects the live scene state.
 
 ### Interface
 
@@ -136,7 +136,7 @@ This project is a lightweight interactive graphics demo built without external l
 
 The sphere rendering, ring rendering, rotation logic, warp transitions, background stars, compass, FPS graph, glow effects, scene post-processing, auto-warp logic, information labels, custom cursor behavior, pause overlay behavior, and UI are all handled in plain JavaScript and CSS.
 
-Warp transitions can randomize both sphere and stage settings, including ring presence, ring size, ring orientation, and background values. Manual and automatic warps use the same transition system, keeping the visual behavior consistent.
+Warp transitions can randomize both sphere and stage settings, including ring presence, ring size, ring orientation, star and background values. Manual and automatic warps use the same transition system, keeping the visual behavior consistent.
 
 The starfield combines randomized radius, alpha, tint, distance, and per-star brightness values to avoid a flat uniform look while still allowing global brightness control through the UI.
 
