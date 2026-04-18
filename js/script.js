@@ -1158,18 +1158,40 @@ function drawBackground(width, height) {
     const sr = star.radius * perspective * (0.9 + zoom * 0.12);
 
     const targetAlphaScale = warpActive
-      ? Math.max(1, 1 + easeInQuint(Math.min(warpProgress, 0.92)) * 2.8)
+      ? Math.max(1, 1 + easeInQuint(Math.min(warpProgress, 0.92)) * 2.2)
       : 1;
 
     const pulse = warpActive
-      ? 1 + easeInQuint(Math.min(warpProgress, 0.94)) * 5.5
+      ? 1 + easeInQuint(Math.min(warpProgress, 0.94)) * 5.2
       : 1;
 
     const drawR = sr * pulse;
 
-    if (showStarGlow && starGlowAmount > 0) {
-      const glowR = sr * (8 + pulse * 2.5) * (0.45 + starGlowAmount * 0.55);
-      const glowA = Math.min(1, star.alpha * 0.85 * starGlowAmount * targetAlphaScale);
+    const glowFadeStart =
+      WARP_CONFIG.timing.select + WARP_CONFIG.timing.center + WARP_CONFIG.timing.zoom * 0.14;
+
+    const glowFadeDuration =
+      WARP_CONFIG.timing.zoom * 1.65;
+
+    const glowFadeT = Math.pow(
+      phaseProgress(warpElapsed, glowFadeStart, glowFadeDuration),
+      1.8
+    );
+
+    const targetGlowAlphaScale = 1 - glowFadeT;
+    const targetGlowRadiusScale = lerp(1.0, 0.16, glowFadeT);
+
+    if (showStarGlow && starGlowAmount > 0 && targetGlowAlphaScale > 0.01) {
+      const glowR =
+        sr *
+        (7.5 + pulse * 1.8) *
+        (0.45 + starGlowAmount * 0.55) *
+        targetGlowRadiusScale;
+
+      const glowA = Math.min(
+        1,
+        star.alpha * 0.85 * starGlowAmount * targetGlowAlphaScale
+      );
 
       const glow = ctx.createRadialGradient(x, y, 0, x, y, glowR);
       glow.addColorStop(0, `rgba(${rgb}, ${glowA})`);
