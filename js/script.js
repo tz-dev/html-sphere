@@ -901,7 +901,7 @@ function resizeCanvas() {
 
 // Slowly returns zoom to 1× while auto-warp is active and no warp is running.
 function tickAutoWarpZoomDrift(dt) {
-  if (!autoWarp || warpActive || dragMode !== "none") return;
+  if (!autoWarp || paused || warpActive || dragMode !== "none") return;
   const targetZoom = 1;
   const delta = autoWarpZoomDriftSpeed * dt;
   if (zoom < targetZoom) {
@@ -2270,7 +2270,7 @@ function animate(timestamp) {
 
   tickAutoWarpZoomDrift(dt);
 
-  if (autoWarp && !warpActive && dragMode === "none") {
+  if (autoWarp && !paused && !warpActive && dragMode === "none") {
     autoWarpTimer += dt;
     if (autoWarpTimer >= getAutoWarpIntervalSeconds()) {
       autoWarpTimer = 0;
