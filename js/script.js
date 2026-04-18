@@ -2583,10 +2583,7 @@ window.addEventListener("pointermove", (e) => {
 window.addEventListener("keydown", (event) => {
   updateOverlayVisibility();
 
-  const tag = document.activeElement?.tagName;
-  const isTyping = tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
-
-  if (event.code === "Space" && !isTyping) {
+  if (event.code === "Space") {
     event.preventDefault();
     paused = !paused;
     pauseBtn.textContent = paused ? "Resume" : "Pause";
@@ -2658,3 +2655,4 @@ updateFullscreenButtonState();
 setControlsDisabled(autoWarp);
 updateCustomCursor();
 requestAnimationFrame(animate);
+ 
