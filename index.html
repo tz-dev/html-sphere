@@ -239,7 +239,14 @@
           </div>
         </aside>
 
-        <div class="fps hidden" id="fpsBox">FPS: <span id="fpsVal">0</span></div>
+        <div class="fps hidden" id="fpsBox">
+          <canvas id="fpsCanvas" aria-label="FPS graph"></canvas>
+          <div class="fps-readout">
+            <span class="fps-label">FPS</span>
+            <span id="fpsVal">0</span>
+          </div>
+        </div>
+        
         <div class="compass" id="compassBox">
           <canvas id="compassCanvas" aria-label="Compass widget"></canvas>
         </div>
