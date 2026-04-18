@@ -2510,3 +2510,4 @@ updateFullscreenButtonState();
 setControlsDisabled(autoWarp);
 updateCustomCursor();
 requestAnimationFrame(animate);
+ 
