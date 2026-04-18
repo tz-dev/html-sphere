@@ -48,6 +48,8 @@ const sphereGlowAmountInput = document.getElementById("sphereGlowAmount");
 const sphereGlowAmountVal = document.getElementById("sphereGlowAmountVal");
 const starGlowAmountInput = document.getElementById("starGlowAmount");
 const starGlowAmountVal = document.getElementById("starGlowAmountVal");
+const starBrightnessInput = document.getElementById("starBrightness");
+const starBrightnessVal = document.getElementById("starBrightnessVal");
 const showGlowInput = document.getElementById("showGlow");
 const showStarGlowInput = document.getElementById("showStarGlow");
 const counterRotateStarsInput = document.getElementById("counterRotateStars");
@@ -148,6 +150,7 @@ let showGlow = true;
 let showStarGlow = true;
 let sphereGlowAmount = 1;
 let starGlowAmount = 1;
+let starBrightness = 1;
 let paused = false;
 
 let lastTime = 0;
@@ -615,6 +618,7 @@ function updateLabels() {
   const density = clamp(Number(starDensityInput.value) / 100, 0.25, 8);
   sphereGlowAmount = clamp(Number(sphereGlowAmountInput.value) / 100, 0, 3);
   starGlowAmount = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
+  starBrightness = clamp(Number(starBrightnessInput.value) / 100, 0.2, 2);
   sphereRadiusScale = getSphereRadiusScale();
   sphereRadiusVal.textContent = `${sphereRadiusScale.toFixed(2)}×`;
 
@@ -647,6 +651,7 @@ function updateLabels() {
   axisXVal.textContent = x.toFixed(2);
   axisYVal.textContent = y.toFixed(2);
   axisZVal.textContent = z.toFixed(2);
+  starBrightnessVal.textContent = `${starBrightness.toFixed(2)}×`;
   if (latCountVal) latCountVal.textContent = String(getLatCount());
   if (lonCountVal) lonCountVal.textContent = String(getLonCount());
   hueVal.textContent = `${sphereHue}°`;
@@ -657,7 +662,7 @@ function setControlsDisabled(disabled) {
   const controls = [
     speedInput, zoomInput, axisXInput, axisYInput, axisZInput,
     sphereRadiusInput, stageHueInput, stageIntensityInput, stageBrightnessInput,
-    starDensityInput, sphereGlowAmountInput, starGlowAmountInput,
+    starDensityInput, sphereGlowAmountInput, starGlowAmountInput, starBrightnessInput,
     hueInput, sceneBrightnessInput, sceneContrastInput
   ];
   controls.forEach(el => { if (el) el.disabled = disabled; });
@@ -783,6 +788,7 @@ function buildStars() {
       distance: 3.8 + Math.random() * 4.4,
       radius: 0.4 + Math.random() * 1.8,
       alpha: 0.12 + Math.random() * 0.42,
+      brightness: 0.55 + Math.random() * 0.75,
       tint: Math.random(),
       name: `Star ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 999) + 1}`,
     });
@@ -795,9 +801,16 @@ function buildStars() {
 function cacheStarColors() {
   for (let i = 0; i < stars.length; i++) {
     const star = stars[i];
-    star._rv = 155 + Math.round((1 - star.tint) * 40);
-    star._gv = 205 + Math.round(star.tint * 30);
-    star._bv = 220 + Math.round(star.tint * 25);
+    const b = (star.brightness ?? 1) * starBrightness;
+
+    star._rv = Math.round((155 + (1 - star.tint) * 40) * b);
+    star._gv = Math.round((205 + star.tint * 30) * b);
+    star._bv = Math.round((220 + star.tint * 25) * b);
+
+    star._rv = clamp(star._rv, 80, 255);
+    star._gv = clamp(star._gv, 80, 255);
+    star._bv = clamp(star._bv, 80, 255);
+
     star._rgbStr = `${star._rv}, ${star._gv}, ${star._bv}`;
   }
 }
@@ -1097,7 +1110,10 @@ function drawBackground(width, height) {
     if (showStarGlow && starGlowAmount > 0 && (star.alpha > 0.3 || isHovered || isWarpTarget)) {
       const baseGlowR = isHovered || isWarpTarget ? sr * 7 : sr * 4;
       const glowR = baseGlowR * (0.45 + starGlowAmount * 0.55);
-      const glowA = (isHovered ? star.alpha * 0.55 : star.alpha * 0.35) * starGlowAmount;
+      const glowA =
+        (isHovered ? star.alpha * 0.55 : star.alpha * 0.35) *
+        starGlowAmount *
+        (star.brightness ?? 1);
       const pulseR = isWarpTarget ? glowR * (1 + easeInQuint(warpProgress) * 3) : glowR;
 
       const glow = ctx.createRadialGradient(x, y, 0, x, y, pulseR);
@@ -1115,7 +1131,8 @@ function drawBackground(width, height) {
       : isWarpTarget ? sr * (1 + easeInQuint(warpProgress) * 4) : sr;
 
     ctx.beginPath();
-    ctx.fillStyle = `rgba(${rgb}, ${Math.min(1, star.alpha * alphaScale)})`;
+    const baseAlpha = Math.min(1, star.alpha * alphaScale * (star.brightness ?? 1));
+    ctx.fillStyle = `rgba(${rgb}, ${baseAlpha})`;
     ctx.arc(x, y, drawR, 0, Math.PI * 2);
     ctx.fill();
 
@@ -1467,7 +1484,6 @@ function drawFpsGraph() {
   const graphW = width - pad * 2;
   const graphH = height - pad * 2;
 
-  // Hintergrund-Raster
   fpsCtx.strokeStyle = "rgba(135, 227, 255, 0.10)";
   fpsCtx.lineWidth = 1;
 
@@ -1479,7 +1495,6 @@ function drawFpsGraph() {
     fpsCtx.stroke();
   }
 
-  // Achsenbeschriftung
   fpsCtx.fillStyle = "rgba(151, 199, 216, 0.75)";
   fpsCtx.font = "10px Inter, system-ui, sans-serif";
   fpsCtx.textAlign = "left";
@@ -1953,6 +1968,8 @@ function resetView() {
   lonCountInput.value     = 12;
 
   starDensityInput.value  = 400;
+  starBrightnessInput.value = "100";
+  starBrightness = 1;
 
   hueInput.value          = 210;
   sphereHue               = 210;
@@ -2364,6 +2381,13 @@ starDensityInput.addEventListener("input",  () => { buildStars(); updateLabels()
 sphereGlowAmountInput.addEventListener("input", () => { updateLabels(); updateOverlayVisibility(); render(); });
 starGlowAmountInput.addEventListener("input",   () => { updateLabels(); updateOverlayVisibility(); render(); });
 
+starBrightnessInput.addEventListener("input", () => {
+  updateLabels();
+  cacheStarColors();
+  updateOverlayVisibility();
+  render();
+});
+
 showGlowInput.addEventListener("change",     () => { showGlow     = showGlowInput.checked;     updateOverlayVisibility(); render(); });
 showStarGlowInput.addEventListener("change", () => { showStarGlow = showStarGlowInput.checked; updateOverlayVisibility(); render(); });
 
@@ -2482,6 +2506,7 @@ showStarGlow       = showStarGlowInput.checked;
 counterRotateStars = counterRotateStarsInput.checked;
 sphereGlowAmount   = clamp(Number(sphereGlowAmountInput.value) / 100, 0, 3);
 starGlowAmount     = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
+starBrightness     = clamp(Number(starBrightnessInput.value) / 100, 0.2, 2);
 sceneBrightness    = clamp(Number(sceneBrightnessInput.value) / 100, 0.4, 1.8);
 sceneContrast      = clamp(Number(sceneContrastInput.value) / 100, 0.4, 1.8);
 autoWarp           = autoWarpInput.checked;
