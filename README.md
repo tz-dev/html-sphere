@@ -84,6 +84,7 @@ An optional information label panel can be displayed near the sphere. It shows t
 | **Vert. lines** | Set the number of vertical sphere lines |
 | **Ring inner** | Set the ring inner radius multiplier |
 | **Ring outer** | Set the ring outer radius multiplier |
+| **Pixelation** | Set the pixelation radius |
 | **Auto-warp interval** | Set the delay between automatic warps in seconds |
 
 ## Tech
