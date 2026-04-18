@@ -1252,26 +1252,59 @@ function updateWarpTransientStars(dt, width, height) {
 
 function drawWarpTransientStars() {
   if (!warpTransientStars.length) return;
+
   for (let i = 0; i < warpTransientStars.length; i++) {
     const s = warpTransientStars[i];
+
     const fadeInT  = clamp(s.age / warpTransientStarFadeIn, 0, 1);
     const fadeOutT = clamp(s.life * 1.6, 0, 1);
     const a = clamp(s.alpha * fadeInT * fadeOutT, 0, 1);
+    if (a <= 0.001) continue;
 
+    const speed = Math.hypot(s.vx, s.vy);
+    const dirX = speed > 0.0001 ? s.vx / speed : 0;
+    const dirY = speed > 0.0001 ? s.vy / speed : 0;
+
+    // Streifenlänge wächst mit Geschwindigkeit und leicht mit dem Alter
+    const trailLen =
+      clamp(speed * 0.05, 18, 140) *
+      lerp(0.55, 1.15, fadeInT);
+
+    const tailX = s.x - dirX * trailLen;
+    const tailY = s.y - dirY * trailLen;
+
+    // feiner Leucht-Schweif
+    const trail = ctx.createLinearGradient(s.x, s.y, tailX, tailY);
+    trail.addColorStop(0.0, `rgba(235, 245, 255, ${a * 0.95})`);
+    trail.addColorStop(0.18, `rgba(210, 235, 255, ${a * 0.55})`);
+    trail.addColorStop(1.0, `rgba(210, 235, 255, 0)`);
+
+    ctx.beginPath();
+    ctx.strokeStyle = trail;
+    ctx.lineWidth = Math.max(1, s.r * 1.15);
+    ctx.lineCap = "round";
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(tailX, tailY);
+    ctx.stroke();
+
+    // optionaler weicher Glow um den Streifenkopf
     if (showStarGlow && starGlowAmount > 0) {
-      const glowR = s.r * (3.2 + starGlowAmount * 2.4);
-      const glowA = a * (0.18 + starGlowAmount * 0.12);
+      const glowR = s.r * (4.0 + starGlowAmount * 2.8);
+      const glowA = a * (0.18 + starGlowAmount * 0.14);
+
       const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowR);
       glow.addColorStop(0, `rgba(210, 235, 255, ${glowA})`);
       glow.addColorStop(1, `rgba(210, 235, 255, 0)`);
+
       ctx.beginPath();
       ctx.fillStyle = glow;
       ctx.arc(s.x, s.y, glowR, 0, Math.PI * 2);
       ctx.fill();
     }
 
+    // heller Kern vorne
     ctx.beginPath();
-    ctx.fillStyle = `rgba(210, 235, 255, ${a})`;
+    ctx.fillStyle = `rgba(245, 250, 255, ${Math.min(1, a * 1.1)})`;
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
     ctx.fill();
   }
