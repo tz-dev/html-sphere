@@ -2289,7 +2289,7 @@ function isPointOnSphere(e) {
 
 function onPointerDown(e) {
   if (e.target.closest(".overlay")) return;
-  if (autoWarp) return;
+  if (autoWarp || paused) return;
   updateOverlayVisibility();
 
   if (e.button === 1) {
@@ -2423,7 +2423,7 @@ function animate(timestamp) {
     }
   }
 
-  if (warpActive) {
+  if (warpActive && !paused) {
     tickWarp(dt);
     updateLabels();
   }
@@ -2658,4 +2658,3 @@ updateFullscreenButtonState();
 setControlsDisabled(autoWarp);
 updateCustomCursor();
 requestAnimationFrame(animate);
- 
