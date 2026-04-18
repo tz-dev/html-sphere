@@ -1938,31 +1938,45 @@ function resetSphereOrientation() {
 }
 
 function resetView() {
-  speedInput.value        = 120;
+  speedInput.value        = 60;
   zoom                    = 1;
   syncInputFromZoom();
+
   axisXInput.value        = 30;
   axisYInput.value        = 100;
   axisZInput.value        = 10;
+
   latCountInput.value     = 12;
   lonCountInput.value     = 12;
+
+  starDensityInput.value  = 400;
+
   hueInput.value          = 210;
   sphereHue               = 210;
+
   stageHueInput.value     = 210;
   stageIntensityInput.value = 100;
   stageHue                = 210;
   stageIntensity          = 1;
+
   sceneBrightnessInput.value = 100;
   sceneContrastInput.value   = 100;
+
   autoWarpTimer           = 0;
   sphereRotation          = identityMatrix();
   ringRotation            = identityMatrix();
   viewRotation            = identityMatrix();
   sphereAngularVelocity   = getPresetAngularVelocity();
+
   starfieldRotation       = identityMatrix();
   starViewRotation        = viewRotation;
+
+  counterRotateStars      = true;
+  counterRotateStarsInput.checked = true;
+
   paused                  = false;
   pauseBtn.textContent    = "Pause";
+
   warpActive              = false;
   warpStarIdx             = -1;
   warpSphereAlpha         = 1;
@@ -1970,29 +1984,39 @@ function resetView() {
   warpSphereOffsetY       = 0;
   warpDriftDirX           = 0;
   warpDriftDirY           = 0;
-  warpStartViewRotation   = identityMatrix();
-  warpTargetViewRotation  = identityMatrix();
+
+  warpStartViewRotation      = identityMatrix();
+  warpTargetViewRotation     = identityMatrix();
   warpStartStarViewRotation  = identityMatrix();
   warpTargetStarViewRotation = identityMatrix();
   warpCounterRotateWasActive = false;
-  ringEnabled             = false;
+
+  ringEnabled             = true;
   ringInnerRadius         = 1.08;
   ringOuterRadius         = 1.45;
-  ringEnabledInput.checked = false;
+  ringEnabledInput.checked = true;
   ringInnerRadiusInput.value = "1.08";
   ringOuterRadiusInput.value = "1.45";
+
   stageBrightnessInput.value = 100;
   stageBrightness            = 1;
+
   sphereRadiusScale          = 1;
   sphereRadiusInput.value    = "100";
+
   showInfoLabel              = showInfoLabelInput.checked;
   currentSphereLabelId       = "SPHERE-001";
   currentLabelPosition       = "right";
+
   pixelationInput.value      = "1";
   pixelationStrength         = 1;
   pixelateEnabled            = false;
 
+  showFpsInput.checked = true;
+  setFpsVisible(true);
+
   syncRingInputs();
+  buildStars();
   updateLabels();
   updateSceneFilter();
   updateStageIntensity();
