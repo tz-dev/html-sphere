@@ -250,6 +250,12 @@ let warpStartContrast = 1;
 let warpTargetContrast = 1;
 let warpStartSpeed = 120;
 let warpTargetSpeed = 120;
+let warpStartStarDensity = 4;
+let warpTargetStarDensity = 4;
+let warpStartStarGlow = 1;
+let warpTargetStarGlow = 1;
+let warpStartStarBrightness = 1;
+let warpTargetStarBrightness = 1;
 let warpTargetRingInnerRadius = 1.08;
 let warpTargetRingOuterRadius = 1.45;
 let warpTargetRingEnabled = false;
@@ -1618,6 +1624,9 @@ function startWarp(starIdx, flashX, flashY) {
   warpStartBrightness = Number(sceneBrightnessInput.value) / 100;
   warpStartContrast   = Number(sceneContrastInput.value) / 100;
   warpStartSpeed      = Number(speedInput.value);
+  warpStartStarDensity    = clamp(Number(starDensityInput.value) / 100, 0.25, 8);
+  warpStartStarGlow       = clamp(Number(starGlowAmountInput.value) / 100, 0, 3);
+  warpStartStarBrightness = clamp(Number(starBrightnessInput.value) / 100, 0.2, 2);
 
   warpTargetZoom        = getRandomInRange(0.15, 1.25);
   warpTargetHue         = Math.floor(Math.random() * 360);
@@ -1627,6 +1636,9 @@ function startWarp(starIdx, flashX, flashY) {
   warpTargetBrightness  = getRandomInRange(0.75, 1.5);
   warpTargetContrast    = getRandomInRange(0.75, 1.5);
   warpTargetSpeed       = Math.round(getRandomInRange(15, 150));
+  warpTargetStarDensity    = getRandomInRange(0.6, 6.5);
+  warpTargetStarGlow       = getRandomInRange(0.15, 3.0);
+  warpTargetStarBrightness = getRandomInRange(0.5, 1.7);
 
   const nextRingInner = getRandomInRange(1.00, 1.80);
   const nextRingOuter = getRandomInRange(nextRingInner + 0.05, nextRingInner + 0.90);
@@ -1767,6 +1779,26 @@ function tickWarp(dt) {
   sceneContrastInput.value   = String(Math.round(lerp(warpStartContrast, warpTargetContrast, zoomT) * 100));
   speedInput.value           = String(Math.round(lerp(warpStartSpeed, warpTargetSpeed, zoomT)));
 
+  const nextStarDensity = lerp(warpStartStarDensity, warpTargetStarDensity, zoomT);
+  const nextStarGlow = lerp(warpStartStarGlow, warpTargetStarGlow, zoomT);
+  const nextStarBrightness = lerp(warpStartStarBrightness, warpTargetStarBrightness, zoomT);
+
+  const prevStarDensity = clamp(Number(starDensityInput.value) / 100, 0.25, 8);
+
+  starDensityInput.value = String(Math.round(nextStarDensity * 100));
+  starGlowAmountInput.value = String(Math.round(nextStarGlow * 100));
+  starBrightnessInput.value = String(Math.round(nextStarBrightness * 100));
+
+  starGlowAmount = nextStarGlow;
+  starBrightness = nextStarBrightness;
+
+  // Nur neu bauen, wenn sich die Density sichtbar geändert hat
+  if (Math.abs(nextStarDensity - prevStarDensity) > 0.08) {
+    buildStars();
+  } else {
+    cacheStarColors();
+  }
+
   sphereRadiusScale = lerp(warpStartRadiusScale, warpTargetRadiusScale, zoomT);
   syncInputFromSphereRadius();
 
@@ -1838,6 +1870,13 @@ function tickWarp(dt) {
     speedInput.value            = String(warpTargetSpeed);
     sphereGlowAmountInput.value = String(Math.round(warpTargetSphereGlow * 100));
     sphereGlowAmount = warpTargetSphereGlow;
+
+    starDensityInput.value = String(Math.round(warpTargetStarDensity * 100));
+    starGlowAmountInput.value = String(Math.round(warpTargetStarGlow * 100));
+    starBrightnessInput.value = String(Math.round(warpTargetStarBrightness * 100));
+
+    starGlowAmount = warpTargetStarGlow;
+    starBrightness = warpTargetStarBrightness;
 
     ringEnabled = warpTargetRingEnabled;
     ringEnabledInput.checked = ringEnabled;
